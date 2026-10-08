@@ -1,0 +1,152 @@
+/*!
+ * Copyright (c) https://github.com/lutinglt
+ *
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { css, cssCombine, cssStyle, themeVars } from "@lutinglt/gitea-github-theme/core";
+import {
+  basicButtonStyle,
+  primaryButtonHoverStyle,
+  primaryButtonStyle,
+} from "@lutinglt/gitea-github-theme/styles/common";
+
+const tinyStyle = cssStyle({
+  color: themeVars.github.themeExtra.button.primary.fgColor.accent,
+  backgroundColor: themeVars.color.button,
+  borderColor: themeVars.color.light.border,
+});
+
+const tinyHoverStyle = cssStyle({
+  color: themeVars.github.button.primary.fgColor.rest,
+  backgroundColor: themeVars.github.button.primary.bgColor.hover,
+  borderColor: themeVars.github.button.primary.borderColor.hover,
+});
+
+// 设置界面下的按钮
+const button = css`
+  /* 不包含管理员的设置界面 */
+  .user-main-content,
+  .repo-setting-content,
+  .user-setting-content,
+  .org-setting-content {
+    /* 主色调按钮替换为普通按钮 */
+    .ui.primary.button {
+      ${basicButtonStyle}
+    }
+    /* 迷你按钮替换为自定义的主色调按钮 (例: SSH 验证按钮) */
+    .ui.primary.button.tiny {
+      ${tinyStyle}
+      &:hover {
+        ${tinyHoverStyle}
+      }
+      &:active {
+        background-color: ${themeVars.github.button.primary.bgColor.active};
+      }
+    }
+  }
+  /* 所有设置界面 */
+  .user-main-content,
+  .repo-setting-content,
+  .user-setting-content,
+  .org-setting-content,
+  .admin-setting-content {
+    /* 右上角迷你按钮替换会主色调按钮 */
+    .ui.attached.header > .ui.right {
+      .ui.primary.button.tiny {
+        ${primaryButtonStyle}
+        padding: 3px 12px;
+        min-height: 20px;
+        line-height: 20px;
+        &:hover {
+          ${primaryButtonHoverStyle}
+        }
+        &:active {
+          background-color: ${themeVars.github.button.primary.bgColor.active};
+        }
+      }
+    }
+  }
+  /* 管理员设置界面下的自定义主色调按钮 */
+  .admin-setting-content {
+    .ui.primary.button {
+      ${tinyStyle}
+      padding: 5px 16px;
+      line-height: 22px;
+      box-shadow: none;
+      &:hover {
+        ${tinyHoverStyle}
+        box-shadow: ${themeVars.github.shadow.resting.small};
+      }
+      &:active {
+        box-shadow: ${themeVars.github.shadow.resting.small};
+        background-color: ${themeVars.github.button.primary.bgColor.active};
+        /* 保持鼠标移开时边框颜色和文字颜色不变 */
+        border-color: ${themeVars.github.button.primary.borderColor.hover};
+        color: ${themeVars.github.button.primary.fgColor.rest};
+      }
+    }
+    .ui.red.button {
+      padding: 5px 16px;
+      line-height: 22px;
+    }
+    .button:is(.primary, .danger):not(.ui) {
+      gap: 8px;
+      line-height: 22px;
+      min-height: 30px;
+      padding: 5px 16px;
+    }
+    .button.primary:not(.ui) {
+      background-color: ${themeVars.color.button};
+      border-color: ${themeVars.color.light.border};
+      box-shadow: none;
+      color: ${themeVars.github.themeExtra.button.primary.fgColor.accent};
+      &:is(:hover, :focus-visible) {
+        background-color: ${themeVars.github.button.primary.bgColor.hover};
+        border-color: ${themeVars.github.button.primary.borderColor.hover};
+        box-shadow: ${themeVars.github.shadow.resting.small};
+        color: ${themeVars.github.button.primary.fgColor.rest};
+      }
+      &:active {
+        background-color: ${themeVars.github.button.primary.bgColor.active};
+        border-color: ${themeVars.github.button.primary.borderColor.hover};
+        box-shadow: ${themeVars.github.shadow.resting.small};
+        color: ${themeVars.github.button.primary.fgColor.rest};
+      }
+    }
+  }
+`;
+
+const label = css`
+  /* Runner 标签 */
+  .runner-container {
+    /* 普通标签, runner 状态: 离线, runner 标签 */
+    .ui.label {
+      border: 1px solid ${themeVars.color.light.border};
+    }
+  }
+`;
+
+// 修复组织设置界面的组织设置中多余的边框
+const fixOrgSetting = css`
+  .page-content.organization.settings {
+    .org-setting-content {
+      border: 0;
+    }
+  }
+`;
+
+export default cssCombine(button, label, fixOrgSetting);

@@ -1,0 +1,69 @@
+{{/* GitHub-style grid file list adapted to Forgejo 16 template data. */}}
+<div id="repo-files-table"
+	{{if .HasFilesWithoutLatestCommit}}
+		hx-indicator=".repo-file-cell.notready.message"
+		hx-trigger="load"
+		hx-swap="morph"
+		hx-get="{{.LastCommitLoaderURL}}"
+	{{end}}
+>
+	<div class="gitea-github-theme-templates repo-file-line repo-file-last-commit">
+		{{template "repo/latest_commit_row" .}}
+	</div>
+	{{if .HasParentPath}}
+	<a class="repo-file-line parent-link silenced" href="{{.BranchLink}}{{if .ParentPath}}{{PathEscapeSegments .ParentPath}}{{end}}">
+		{{svg "octicon-reply" 16}} ..
+	</a>
+	{{end}}
+	{{range $item := .Files}}
+		<div class="repo-file-item">
+			{{$entry := $item.Entry}}
+			{{$commit := $item.Commit}}
+			<div class="repo-file-cell name muted-links">
+				{{if $entry.IsSubmodule}}
+					{{$submodule := $item.Submodule}}
+					{{$refURL := $submodule.ResolveUpstreamURL $.Repository.HTMLURL}}
+					{{svg "octicon-file-submodule" 16}}
+					{{if $refURL}}
+						<a class="entry-name" href="{{$refURL}}" title="{{$entry.Name}}">{{$entry.Name}}</a>
+						@ <a class="tw-text-primary" href="{{$refURL}}/commit/{{PathEscape $submodule.Commit.String}}">{{ShortSha $submodule.Commit.String}}</a>
+					{{else}}
+						<span class="entry-name" title="{{$entry.Name}}">{{$entry.Name}}</span>
+						@ {{ShortSha $submodule.Commit.String}}
+					{{end}}
+				{{else if $entry.IsDir}}
+					{{$subJumpablePathName := $entry.GetSubJumpablePathName}}
+					{{svg "octicon-file-directory-fill" 16}}
+					<a class="entry-name" href="{{$.TreeLink}}/{{PathEscapeSegments $subJumpablePathName}}" title="{{$subJumpablePathName}}">
+						{{$subJumpablePathFields := StringUtils.Split $subJumpablePathName "/"}}
+						{{$subJumpablePathFieldLast := Eval (len $subJumpablePathFields) "-" 1}}
+						{{if eq $subJumpablePathFieldLast 0}}
+							{{$subJumpablePathName}}
+						{{else}}
+							{{$subJumpablePathPrefixes := slice $subJumpablePathFields 0 $subJumpablePathFieldLast}}
+							<span class="text light-2">{{StringUtils.Join $subJumpablePathPrefixes "/"}}</span>/{{index $subJumpablePathFields $subJumpablePathFieldLast}}
+						{{end}}
+					</a>
+				{{else}}
+					{{svg (printf "octicon-%s" (EntryIcon $entry)) 16}}
+					<a class="entry-name" href="{{$.TreeLink}}/{{PathEscapeSegments $entry.Name}}" title="{{$entry.Name}}">{{$entry.Name}}</a>
+				{{end}}
+			</div>
+			<div class="repo-file-cell message commit-summary {{if not $commit}}notready{{end}}">
+				{{if $commit}}
+					{{$commitLink := printf "%s/commit/%s" $.RepoLink (PathEscape $commit.ID.String)}}
+					{{template "repo/commit_message_subject" dict
+						"Context" $.Context
+						"Message" $commit.Message
+						"Summary" $commit.Summary
+						"CommitLink" $commitLink
+						"Metas" ($.Repository.ComposeMetas ctx)
+					}}
+				{{else}}
+					<span class="ui active tiny slow centered inline loader"></span>
+				{{end}}
+			</div>
+			<div class="repo-file-cell age">{{if $commit}}{{DateUtils.TimeSince $commit.Committer.When}}{{end}}</div>
+		</div>
+	{{end}}
+</div>

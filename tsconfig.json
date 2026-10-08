@@ -1,0 +1,52 @@
+{
+  "compilerOptions": {
+    "plugins": [
+      {
+        "name": "@styled/typescript-styled-plugin",
+        "lint": {
+          "validProperties": ["rx", "ry", "r"]
+        }
+      }
+    ],
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "useDefineForClassFields": true,
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+    "paths": {
+      "@lutinglt/gitea-github-theme/core": ["./src"],
+      "@lutinglt/gitea-github-theme/vite-plugin": ["./src/vite-plugin"],
+      "@lutinglt/gitea-github-theme/styles": ["./styles"],
+      "@lutinglt/gitea-github-theme/styles/common": ["./styles/common"],
+      "@lutinglt/gitea-github-theme/themes": ["./themes"],
+      "@lutinglt/gitea-github-theme/primer": ["./primer"]
+    }
+  },
+  "include": [
+    "src",
+    "components",
+    "styles",
+    "themes",
+    "scripts",
+    "dev",
+    "primer",
+    "vite.config.ts",
+    "theme.config.ts",
+    "eslint.config.ts"
+  ],
+  "exclude": ["dev/fixtures"]
+}

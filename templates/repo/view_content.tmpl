@@ -1,0 +1,159 @@
+{{/*
+	The theme's repository content layout adapted to Forgejo 15.
+	Newer file-tree/search partials are replaced with Forgejo 15's branch
+	selector and find-file route. The native clone controls are retained inside
+	a compact details dropdown so the two toolbar groups fit on one line.
+*/}}
+{{$isTreePathRoot := not .TreeNames}}
+{{$treeNameIdxLast := Eval (len .TreeNames) "-" 1}}
+
+<div class="gitea-github-theme-templates repo-button-row">
+	<div class="repo-button-row-left">
+		{{if not .TreeNames}}{{template "repo/branch_dropdown" dict "root" .}}{{else}}<button type="button" class="theme-icon-button repo-source-show-tree" data-source-tree-toggle aria-label="Show file tree">{{svg "octicon-sidebar-expand" 16}}</button>{{end}}
+
+		{{if and $isTreePathRoot (.Permission.CanRead $.UnitTypeCode) (not .IsEmptyRepo)}}
+		<div class="repository-summary">
+			<a class="item muted" href="{{.RepoLink}}/branches">
+				{{svg "octicon-git-branch"}}
+				{{ctx.Locale.TrPluralString .BranchesCount "counters.n_branches" (printf "<b>%s</b>" (ctx.Locale.PrettyNumber .BranchesCount) | TrustHTML)}}
+			</a>
+			<a class="item muted" href="{{.RepoLink}}/tags">
+				{{svg "octicon-tag"}}
+				{{ctx.Locale.TrPluralString .NumTags "counters.n_tags" (printf "<b>%s</b>" (ctx.Locale.PrettyNumber .NumTags) | TrustHTML)}}
+			</a>
+		</div>
+		{{end}}
+
+		{{if not $isTreePathRoot}}
+			<span class="breadcrumb repo-path">
+				<a class="section" href="{{.RepoLink}}/src/{{.BranchNameSubURL}}" title="{{.Repository.Name}}">{{StringUtils.EllipsisString .Repository.Name 30}}</a>
+				{{- range $i, $v := .TreeNames -}}
+					<span class="breadcrumb-divider">/</span>
+					{{- if eq $i $treeNameIdxLast -}}
+						<h1 class="active section repo-file-title" title="{{$v}}">{{$v}}</h1>
+						<button class="btn interact-fg tw-p-2" data-clipboard-text="{{$.TreePath}}" data-tooltip-content="{{ctx.Locale.Tr "copy_path"}}">{{svg "octicon-copy" 14}}</button>
+					{{- else -}}
+						{{$p := index $.Paths $i}}<span class="section"><a href="{{$.BranchLink}}/{{PathEscapeSegments $p}}" title="{{$v}}">{{$v}}</a></span>
+					{{- end -}}
+				{{- end -}}
+			</span>
+		{{end}}
+	</div>
+
+	<div class="repo-button-row-right">
+		{{if $isTreePathRoot}}
+            {{template "repo/file_picker" .}}
+		{{end}}
+
+		{{if and .CanWriteCode .IsViewBranch (not .Repository.IsMirror) (not .Repository.IsArchived) (not .IsViewFile)}}
+			<button class="ui dropdown basic compact jump button repo-add-file"{{if not .Repository.CanEnableEditor}} disabled{{end}}>
+				{{ctx.Locale.Tr "repo.editor.add_file"}}
+				{{svg "octicon-triangle-down" 14 "dropdown icon"}}
+				<div class="menu">
+					<a class="item" href="{{.RepoLink}}/_new/{{.BranchName | PathEscapeSegments}}/{{.TreePath | PathEscapeSegments}}">
+						{{svg "octicon-plus" 16}}{{ctx.Locale.Tr "repo.editor.new_file"}}
+					</a>
+					{{if .RepositoryUploadEnabled}}
+					<a class="item" href="{{.RepoLink}}/_upload/{{.BranchName | PathEscapeSegments}}/{{.TreePath | PathEscapeSegments}}">
+						{{svg "octicon-upload" 16}}{{ctx.Locale.Tr "repo.editor.upload_file"}}
+					</a>
+					{{end}}
+					<a class="item" href="{{.RepoLink}}/_diffpatch/{{.BranchName | PathEscapeSegments}}/{{.TreePath | PathEscapeSegments}}">
+						{{svg "octicon-diff" 16}}{{ctx.Locale.Tr "repo.editor.patch"}}
+					</a>
+				</div>
+			</button>
+		{{end}}
+
+        <details class="theme-menu repo-mobile-actions only-mobile">
+            <summary class="theme-icon-button theme-icon-button-outlined" aria-label="More file actions">{{svg "octicon-kebab-horizontal" 16}}</summary>
+            <div class="theme-menu-popover">
+                <a href="{{.Repository.Link}}/find/{{.BranchNameSubURL}}">{{svg "octicon-search" 16}}Go to file</a>
+                {{if and .CanWriteCode .IsViewBranch (not .Repository.IsMirror) (not .Repository.IsArchived) (not .IsViewFile)}}
+                    <a href="{{.RepoLink}}/_new/{{.BranchName | PathEscapeSegments}}/{{.TreePath | PathEscapeSegments}}">{{svg "octicon-plus" 16}}{{ctx.Locale.Tr "repo.editor.new_file"}}</a>
+                    {{if .RepositoryUploadEnabled}}<a href="{{.RepoLink}}/_upload/{{.BranchName | PathEscapeSegments}}/{{.TreePath | PathEscapeSegments}}">{{svg "octicon-upload" 16}}{{ctx.Locale.Tr "repo.editor.upload_file"}}</a>{{end}}
+                    <a href="{{.RepoLink}}/_diffpatch/{{.BranchName | PathEscapeSegments}}/{{.TreePath | PathEscapeSegments}}">{{svg "octicon-diff" 16}}{{ctx.Locale.Tr "repo.editor.patch"}}</a>
+                {{end}}
+            </div>
+        </details>
+		{{if and $isTreePathRoot .Repository.IsTemplate}}
+			<a role="button" class="ui primary compact button" href="{{AppSubUrl}}/repo/create?template_id={{.Repository.ID}}">
+				{{ctx.Locale.Tr "repo.use_template"}}
+			</a>
+		{{end}}
+
+		{{if $isTreePathRoot}}
+			<details class="dropdown repo-code-dropdown">
+				<summary class="ui primary compact button" aria-label="Code">
+					{{svg "octicon-code" 16}}
+					<span>{{ctx.Locale.Tr "repo.code"}}</span>
+					{{svg "octicon-triangle-down" 14 "dropdown icon"}}
+				</summary>
+				<div class="content">
+					<nav class="repo-code-navigation" aria-label="{{ctx.Locale.Tr "repo.code"}}">
+						<span class="repo-code-navigation-item active">{{ctx.Locale.Tr "admin.users.local"}}</span>
+					</nav>
+					<div class="repo-code-body">
+						<div class="repo-code-clone">
+							<div class="repo-code-title">
+								{{svg "octicon-terminal" 16}}
+								<span>{{ctx.Locale.Tr "repo.clone_this_repo"}}</span>
+							</div>
+							<div class="clone-panel ui action tiny input">
+								{{template "repo/clone_buttons" .}}
+							</div>
+						</div>
+                        {{if and (not (StringUtils.HasPrefix .BranchNameSubURL "commit")) (or .CodeIndexerDisabled (and (not .TagName) (eq .Repository.DefaultBranch .BranchName)))}}
+                            <details class="repo-code-search">
+                                <summary>{{svg "octicon-search" 16}}Search code</summary>
+                                <form class="ui form ignore-dirty theme-search-control" action="{{.RepoLink}}/search/{{if .CodeIndexerDisabled}}{{.BranchNameSubURL}}{{end}}" method="get" data-test-tag="codesearch">
+				<input type="hidden" name="path" value="{{.TreePath | PathEscapeSegments}}">
+				{{template "shared/search/combo_multi"
+						dict
+							"Value"       .Keyword
+							"Disabled"    .CodeIndexerUnavailable
+							"Placeholder" (ctx.Locale.Tr "search.code_kind")
+							"Selected"    (index .CodeSearchOptions 0)
+							"Options"     .CodeSearchOptions}}
+			</form>
+                            </details>
+                        {{end}}
+						{{if or (not $.DisableDownloadSourceArchives) .CitationFile .OpenWithEditorApps}}
+						<hr>
+						<ul class="repo-code-actions">
+                                {{if $.EnableFeed}}<li class="only-mobile"><a href="{{$.RepoLink}}.rss">{{svg "octicon-rss" 16}}{{ctx.Locale.Tr "rss_feed"}}</a></li>{{end}}
+							{{if not $.DisableDownloadSourceArchives}}
+								<li><a class="archive-link" href="{{$.RepoLink}}/archive/{{PathEscapeSegments $.RefName}}.zip" rel="nofollow">{{svg "octicon-file-zip" 16}}{{ctx.Locale.Tr "repo.download_zip"}}</a></li>
+								<li><a class="archive-link" href="{{$.RepoLink}}/archive/{{PathEscapeSegments $.RefName}}.tar.gz" rel="nofollow">{{svg "octicon-file-zip" 16}}{{ctx.Locale.Tr "repo.download_tar"}}</a></li>
+								<li><a class="archive-link" href="{{$.RepoLink}}/archive/{{PathEscapeSegments $.RefName}}.bundle" rel="nofollow">{{svg "octicon-package" 16}}{{ctx.Locale.Tr "repo.download_bundle"}}</a></li>
+							{{end}}
+							{{if .CitationFile}}
+								<li><a class="citation-link" href="{{$.RepoLink}}/src/branch/{{$.BranchName}}/{{$.CitationFile}}">{{svg "octicon-cross-reference" 16}}{{ctx.Locale.Tr "repo.cite_this_repo"}}</a></li>
+							{{end}}
+							{{range .OpenWithEditorApps}}
+								<li><a class="js-clone-url-editor" data-href-template="{{.OpenURL}}">{{.IconHTML}}{{ctx.Locale.Tr "repo.open_with_editor" .DisplayName}}</a></li>
+							{{end}}
+						</ul>
+						{{end}}
+					</div>
+				</div>
+				{{template "repo/clone_script" .}}{{/* Updates .js-clone-url and related elements. */}}
+			</details>
+		{{end}}
+	</div>
+</div>
+
+{{if .IsViewFile}}
+	{{template "repo/view_file" .}}
+{{else if .IsBlame}}
+	{{template "repo/blame" .}}
+{{else}}{{/* IsViewDirectory */}}
+	{{template "repo/view_list" .}}
+	{{if and .ReadmeExist (or .IsMarkup .IsPlainText)}}
+		{{template "repo/view_file" .}}
+	{{end}}
+{{end}}
+
+<script src="{{AssetUrlPrefix}}/js/details-menu.js" defer></script>
+
+<script src="{{AssetUrlPrefix}}/js/repo-file-picker.js" defer></script>

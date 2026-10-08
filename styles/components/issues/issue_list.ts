@@ -1,0 +1,296 @@
+/*!
+ * Copyright (c) https://github.com/lutinglt
+ *
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { css, cssCombine, extractVarName, otherThemeVars, themeVars } from "@lutinglt/gitea-github-theme/core";
+
+// 工单&PR 列表
+const issueList = css`
+  /* 仓库页面的里程碑列表菜单栏 */
+  .page-content.repository.milestones,
+  .page-content.repository.milestone-issue-list,
+  .page-content.repository.issue-list {
+    ${extractVarName(otherThemeVars.checkbox.size)}: 16px;
+    /* 头部筛选菜单栏 */
+    .issue-list-toolbar {
+      align-items: center;
+      align-content: center;
+      background-color: ${themeVars.color.box.header};
+      border: 1px solid ${themeVars.color.light.border};
+      border-bottom: 0;
+      border-top-left-radius: ${otherThemeVars.border.radius};
+      border-top-right-radius: ${otherThemeVars.border.radius};
+      height: 48px;
+      padding: 8px;
+      margin-top: 16px;
+      .issue-list-toolbar-left {
+        /* 复选框 */
+        input {
+          margin: 0 8px !important;
+        }
+        > .ui.compact.menu {
+          align-items: center;
+          border: 0;
+          > .item {
+            background: unset !important;
+            border-radius: ${otherThemeVars.border.radius};
+            color: ${themeVars.color.text.light.num1};
+            padding: 0px 8px;
+            height: 30px;
+            &:before {
+              display: none;
+            }
+            &:hover {
+              background: ${themeVars.github.control.transparent.bgColor.hover} !important;
+            }
+            &.active {
+              color: ${themeVars.color.text.self};
+              font-weight: 700;
+            }
+          }
+        }
+      }
+      .issue-list-toolbar-right > .ui.menu {
+        align-items: center;
+        > .item {
+          color: ${themeVars.color.text.light.num1};
+        }
+        > .ui.button {
+          padding: 0 12px;
+          height: 32px;
+        }
+      }
+      img.ui.avatar {
+        border-radius: 9999px;
+      }
+      &#issue-actions {
+        .issue-list-toolbar-right > .ui.menu > .item {
+          padding: 0 12px;
+          height: 32px;
+          background: ${themeVars.color.button};
+          border: 1px solid ${themeVars.color.light.border};
+          color: ${themeVars.color.text.self};
+          &:hover {
+            background: ${themeVars.color.hover.self};
+          }
+        }
+      }
+    }
+  }
+  /* 里程碑详细页面的 Issue 列表 */
+  .page-content.repository.milestone-issue-list,
+  /* 顶部仪表板的 Issue 列表 */
+  .page-content.dashboard.issues,
+  /* 用户订阅的 Issue 列表 */
+  .page-content.user.notification,
+  /* 仓库 Issue 列表 */
+  .page-content.repository.issue-list {
+    #issue-list {
+      border: 1px solid ${themeVars.color.light.border};
+      border-bottom-left-radius: ${otherThemeVars.border.radius};
+      border-bottom-right-radius: ${otherThemeVars.border.radius};
+      img.ui.avatar {
+        border-radius: 9999px;
+      }
+    }
+  }
+
+  /* 里程碑列表 */
+  /* [TODO] 暂时排除项目的列表 */
+  .page-content.repository.milestones:not(.projects) .milestone-list,
+  /* 仪表板的里程碑列表 */
+  .page-content.repository.milestones.dashboard .milestone-list {
+    border: 1px solid ${themeVars.color.light.border};
+    border-bottom-left-radius: ${otherThemeVars.border.radius};
+    border-bottom-right-radius: ${otherThemeVars.border.radius};
+    .milestone-card {
+      padding: 8px 16px 10px;
+      .milestone-header h3 > a {
+        font-size: 16px;
+        font-weight: 500;
+      }
+      .milestone-header > .tw-flex > span {
+        font-size: 14px;
+        font-weight: 600;
+      }
+    }
+    .milestone-toolbar {
+      font-size: 12px;
+      .group > a {
+        font-size: 13px;
+      }
+    }
+  }
+`;
+
+// 避免手机/平板下菜单错位
+const issueListMobile = css`
+  @media (max-width: 1023.98px) {
+    .page-content.repository.milestones,
+    .page-content.repository.milestone-issue-list,
+    .page-content.repository.issue-list {
+      .issue-list-toolbar {
+        height: auto;
+      }
+    }
+  }
+`;
+
+// 置顶 Issue
+const issuePins = css`
+  #issue-pins {
+    gap: 12px;
+    margin-bottom: 16px;
+    .issue-card {
+      padding: 16px 12px;
+      .content {
+        .issue-card-title {
+          font-size: 16px;
+          font-weight: 600;
+        }
+        svg {
+          color: ${themeVars.color.text.light.num1};
+          height: 100%;
+          margin-right: 3px;
+        }
+        .meta {
+          font-size: 12px;
+          padding-top: 4px;
+        }
+      }
+      .issue-card-bottom {
+        display: none;
+      }
+    }
+    img.ui.avatar {
+      border-radius: 9999px;
+    }
+  }
+`;
+
+const issueRows = css`
+  :is(
+    .page-content.repository.milestone-issue-list,
+    .page-content.dashboard.issues,
+    .page-content.user.notification,
+    .page-content.repository.issue-list
+  ) {
+    & #issue-list > .flex-item {
+      align-items: center;
+      min-height: 64px;
+      padding: 0;
+    }
+
+    & #issue-list > .flex-item:last-child {
+      border-bottom-left-radius: ${otherThemeVars.border.radius};
+      border-bottom-right-radius: ${otherThemeVars.border.radius};
+    }
+
+    & #issue-list > .flex-item:hover {
+      background-color: ${themeVars.color.hover.opaque};
+    }
+
+    & #issue-list > .flex-item:has(:checked) {
+      background-color: ${themeVars.github.bgColor.accent.muted};
+    }
+
+    & #issue-list > .flex-item > .flex-item-icon {
+      align-self: flex-start;
+      margin-top: 14px;
+      margin-left: 16px;
+    }
+
+    & #issue-list > .flex-item > .flex-item-icon > input.issue-checkbox {
+      margin-right: 8px !important;
+    }
+
+    & #issue-list > .flex-item > .flex-item-main {
+      gap: 4px;
+    }
+
+    & #issue-list > .flex-item > .flex-item-main > .flex-item-header {
+      padding-top: 8px;
+    }
+
+    & #issue-list > .flex-item > .flex-item-main > .flex-item-header > .flex-item-trailing {
+      margin-right: 32px;
+    }
+
+    & #issue-list > .flex-item > .flex-item-main > .flex-item-body {
+      font-size: 12px;
+      padding-bottom: 8px;
+    }
+  }
+`;
+
+// Repository lists share one row layout; legacy dashboard rows retain their spacing.
+const repositoryRows = css`
+  .page-content.repository.issue-list:is(.github-issues, .github-pull-list) {
+    & #issue-list > .flex-item {
+      align-items: flex-start;
+      padding: 8px 16px 10px;
+      gap: 8px;
+    }
+    & #issue-list > .flex-item > .flex-item-icon {
+      display: flex;
+      margin: 0;
+      padding-top: 6px;
+      gap: 12px;
+    }
+    & #issue-list > .flex-item > .flex-item-icon > input.issue-checkbox {
+      margin: 0 !important;
+      flex-shrink: 0;
+    }
+    & #issue-list > .flex-item > .flex-item-main {
+      gap: 0;
+    }
+    & #issue-list > .flex-item > .flex-item-main > .flex-item-header {
+      padding: 0;
+      min-height: 24px;
+    }
+    & #issue-list > .flex-item > .flex-item-main > .flex-item-header > .flex-item-trailing {
+      margin-right: 0;
+    }
+    & #issue-list > .flex-item > .flex-item-main > .flex-item-body {
+      padding: 0;
+      line-height: 18px;
+    }
+    & #issue-list .labels-list {
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px;
+      line-height: 18px;
+    }
+    & #issue-list .labels-list > a {
+      display: inline-flex;
+    }
+    & #issue-list .labels-list .ui.label {
+      margin: 0;
+      padding: 0 6px;
+      font-size: 12px;
+      line-height: 18px;
+    }
+    @media (max-width: 767.98px) {
+      & #issue-list > .flex-item {
+        padding: 12px;
+      }
+    }
+  }
+`;
+
+export default cssCombine(issueList, issueListMobile, issuePins, issueRows, repositoryRows);

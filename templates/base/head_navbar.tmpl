@@ -1,0 +1,196 @@
+{{template "base/component_assets" .}}
+{{$isUserProfile := and (not .Repository) .ContextUser .ContextUser.IsIndividual (or .PageIsUserProfile .PageIsViewProjects .IsPackagesPage .IsCodePage)}}
+{{$isOrganization := and (not .Repository) .Org}}
+{{if or $isUserProfile $isOrganization}}
+<header class="profile-global-header{{if $isOrganization}} organization-global-header{{end}}">
+{{end}}
+<link rel="stylesheet" href="{{AssetUrlPrefix}}/css/navbar-drawer.css">
+{{/* Forgejo 15 navigation adapted to the theme's GitHub-style layout. */}}
+<nav id="navbar"{{if .Repository}} class="repository-navbar"{{end}} aria-label="{{ctx.Locale.Tr "aria.navbar"}}">
+	<div class="navbar-left">
+		<!-- the logo -->
+		<a class="item" id="navbar-logo" href="{{AppSubUrl}}/" aria-label="{{if .IsSigned}}{{ctx.Locale.Tr "dashboard"}}{{else}}{{ctx.Locale.Tr "home"}}{{end}}">
+			<img width="30" height="30" src="{{AssetUrlPrefix}}/img/logo.svg" alt="{{ctx.Locale.Tr "logo"}}" aria-hidden="true">
+		</a>
+
+		<!-- mobile right menu, it must be here because in mobile view, each item is a flex column, the first item is a full row column -->
+		<div class="ui secondary menu navbar-mobile-right only-mobile">
+			{{template "base/head_navbar_icons" dict "Data" .}}
+			<button class="item ui icon mini button tw-m-0" id="navbar-drawer-toggle" aria-controls="navbar-drawer" aria-haspopup="dialog" aria-expanded="false" aria-label="{{ctx.Locale.Tr "toggle_menu"}}">{{svg "octicon-three-bars"}}</button>
+		</div>
+
+		<!-- navbar links non-mobile -->
+		{{if .Repository}}
+			{{with .Repository}}
+			<div class="repository-navbar-breadcrumb not-mobile">
+				<a class="repository-navbar-owner" href="{{.Owner.HomeLink}}">
+					{{ctx.AvatarUtils.Avatar .Owner 16}}
+					<span>{{.Owner.Name}}</span>
+				</a>
+				<span class="repository-navbar-separator">/</span>
+				<a class="repository-navbar-name" href="{{$.RepoLink}}">{{.Name}}</a>
+			</div>
+			{{end}}
+		{{else if $isOrganization}}
+			<a class="item profile-navbar-name not-mobile" href="{{.Org.HomeLink}}">{{.Org.Name}}</a>
+		{{else if $isUserProfile}}
+			<a class="item profile-navbar-name not-mobile" href="{{.ContextUser.HomeLink}}">{{.ContextUser.Name}}</a>
+		{{else if and .IsSigned .HideNavbarLinks}}
+			{{/* No links */}}
+		{{else if .IsSigned}}
+			<a class="item{{if .PageIsExplore}} active{{end}}" href="{{AppSubUrl}}/explore/repos">{{ctx.Locale.Tr "explore"}}</a>
+		{{else if .IsLandingPageOrganizations}}
+			<a class="item{{if .PageIsExplore}} active{{end}}" href="{{AppSubUrl}}/explore/organizations">{{ctx.Locale.Tr "explore"}}</a>
+		{{else}}
+			<a class="item{{if .PageIsExplore}} active{{end}}" href="{{AppSubUrl}}/explore/repos">{{ctx.Locale.Tr "explore"}}</a>
+		{{end}}
+
+		<template id="navbar-extra-links-start"></template>
+		{{template "custom/extra_links" .}}
+		<template id="navbar-extra-links-end"></template>
+
+		{{if not .IsSigned}}
+			<a class="item" target="_blank" rel="noopener noreferrer" href="https://forgejo.org/docs/latest/">{{ctx.Locale.Tr "help"}}</a>
+		{{end}}
+	</div>
+
+	<!-- the full dropdown menus -->
+	<div class="navbar-right">
+		{{if and .IsSigned .HideNavbarLinks}}
+			<div class="ui dropdown jump item" data-tooltip-content="{{ctx.Locale.Tr "user_profile_and_more"}}">
+				<span class="text">
+					{{ctx.AvatarUtils.Avatar .SignedUser 24 "tw-mr-1"}}
+					<span class="only-mobile">{{.SignedUser.Name}}</span>
+					<span class="not-mobile flex-text-block">{{svg "octicon-triangle-down"}}</span>
+				</span>
+				<div class="menu user-menu">
+					<div class="header">
+						{{ctx.AvatarUtils.Avatar .SignedUser 32 "user-menu-avatar"}}
+						<strong>{{.SignedUser.Name}}</strong>
+					</div>
+
+					<div class="divider"></div>
+					<a class="item link-action" href data-url="{{AppSubUrl}}/user/logout">
+						{{svg "octicon-sign-out"}}
+						{{ctx.Locale.Tr "sign_out"}}
+					</a>
+				</div><!-- end content avatar menu -->
+			</div><!-- end dropdown avatar menu -->
+		{{else if .IsSigned}}
+			<div class="ui dropdown jump item" data-tooltip-content="{{ctx.Locale.Tr "create_new"}}">
+				<span class="flex-text-block">
+					{{svg "octicon-plus"}}
+					<span class="not-mobile flex-text-block">{{svg "octicon-triangle-down"}}</span>
+					<span class="only-mobile">{{ctx.Locale.Tr "create_new"}}</span>
+				</span>
+				<div class="menu">
+					{{template "base/navbar_create_items" .}}
+				</div><!-- end content create new menu -->
+			</div><!-- end dropdown menu create new -->
+			{{template "base/head_navbar_icons" dict "ItemExtraClass" "not-mobile" "Data" .}}
+
+			<div class="ui dropdown jump item" data-tooltip-content="{{ctx.Locale.Tr "user_profile_and_more"}}">
+				<span class="text tw-flex tw-items-center">
+					<span class="navbar-avatar">
+						{{ctx.AvatarUtils.Avatar .SignedUser 24 "tw-mr-2"}}
+					</span>
+					<span class="only-mobile">{{.SignedUser.Name}}</span>
+					<span class="not-mobile flex-text-block">{{svg "octicon-triangle-down"}}</span>
+				</span>
+				<div class="menu user-menu">
+					<div class="header">
+						{{ctx.AvatarUtils.Avatar .SignedUser 32 "user-menu-avatar"}}
+						<strong>{{.SignedUser.Name}}</strong>
+					</div>
+
+					<div class="divider"></div>
+					<a class="item" href="{{.SignedUser.HomeLink}}">
+						{{svg "octicon-person"}}
+						{{ctx.Locale.Tr "your_profile"}}
+					</a>
+					{{if not .DisableStars}}
+						<a class="item" href="{{.SignedUser.HomeLink}}?tab=stars">
+							{{svg "octicon-star"}}
+							{{ctx.Locale.Tr "your_starred"}}
+						</a>
+					{{end}}
+					<a class="item" href="{{AppSubUrl}}/notifications/subscriptions">
+						{{svg "octicon-bell"}}
+						{{ctx.Locale.Tr "notification.subscriptions"}}
+					</a>
+					<a class="{{if .PageIsUserSettings}}active {{end}}item" href="{{AppSubUrl}}/user/settings">
+						{{svg "octicon-tools"}}
+						{{ctx.Locale.Tr "your_settings"}}
+					</a>
+					<a class="item" target="_blank" rel="noopener noreferrer" href="https://forgejo.org/docs/latest/">
+						{{svg "octicon-question"}}
+						{{ctx.Locale.Tr "help"}}
+					</a>
+					{{if .IsAdmin}}
+					<div class="divider"></div>
+					<a class="{{if .PageIsAdmin}}active {{end}}item" href="{{AppSubUrl}}/admin">
+						{{svg "octicon-server"}}
+						{{ctx.Locale.Tr "admin_panel"}}
+					</a>
+					{{end}}
+					<div class="divider"></div>
+					<a class="item link-action" href data-url="{{AppSubUrl}}/user/logout">
+						{{svg "octicon-sign-out"}}
+						{{ctx.Locale.Tr "sign_out"}}
+					</a>
+				</div><!-- end content avatar menu -->
+			</div><!-- end dropdown avatar menu -->
+		{{else}}
+			{{if .ShowRegistrationButton}}
+				<a class="item navbar-register{{if .PageIsSignUp}} active{{end}}" href="{{AppSubUrl}}/user/sign_up">
+					{{ctx.Locale.Tr "register"}}
+				</a>
+			{{end}}
+			<a class="item{{if .PageIsSignIn}} active{{end}}" rel="nofollow" href="{{AppSubUrl}}/user/login{{if not .PageIsSignIn}}?redirect_to={{.CurrentURL}}{{end}}">
+				{{ctx.Locale.Tr "sign_in"}}
+			</a>
+		{{end}}
+	</div><!-- end full right menu -->
+
+	{{$activeStopwatch := and .IsSigned EnableTimetracking .ActiveStopwatch}}
+	{{if $activeStopwatch}}
+		<div class="active-stopwatch-popup tippy-target">
+			<div class="flex-text-block tw-p-3">
+				<a class="stopwatch-link flex-text-block muted" href="{{$activeStopwatch.IssueLink}}">
+					{{svg "octicon-issue-opened" 16}}
+					<span class="stopwatch-issue">{{$activeStopwatch.RepoSlug}}#{{$activeStopwatch.IssueIndex}}</span>
+				</a>
+				<div class="tw-flex tw-gap-1">
+					<form class="stopwatch-commit" method="post" action="{{$activeStopwatch.IssueLink}}/times/stopwatch/toggle">
+						<button
+							type="submit"
+							class="ui button mini compact basic icon tw-mr-0"
+							data-tooltip-content="{{ctx.Locale.Tr "repo.issues.stop_tracking"}}"
+						>{{svg "octicon-square-fill"}}</button>
+					</form>
+					<form class="stopwatch-cancel" method="post" action="{{$activeStopwatch.IssueLink}}/times/stopwatch/cancel">
+						<button
+							type="submit"
+							class="ui button mini compact basic icon tw-mr-0"
+							data-tooltip-content="{{ctx.Locale.Tr "repo.issues.cancel_tracking"}}"
+						>{{svg "octicon-trash"}}</button>
+					</form>
+				</div>
+			</div>
+		</div>
+	{{end}}
+</nav>
+{{if or $isUserProfile $isOrganization}}
+	<div class="profile-navigation">
+		{{if $isOrganization}}{{template "org/menu" .}}{{else}}{{template "user/overview/header" .}}{{end}}
+	</div>
+</header>
+{{end}}
+{{if .Repository}}
+<nav class="repository-tab-nav page-content repository" aria-label="{{ctx.Locale.Tr "repository"}}">
+	{{template "repo/global_header" .}}
+</nav>
+{{end}}
+
+{{template "base/navbar_drawer" .}}
+<script src="{{AssetUrlPrefix}}/js/navbar-drawer.js" defer></script>

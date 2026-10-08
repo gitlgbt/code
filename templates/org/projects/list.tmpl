@@ -1,0 +1,15 @@
+{{template "base/head" .}}
+{{if .ContextUser.IsOrganization}}
+	<div role="main" aria-label="{{.Title}}" class="page-content organization projects github-org">
+		{{template "org/header" .}}
+		<div class="ui container org-subpage-layout">
+			{{template "org/subpage_nav" .}}
+			<div class="org-subpage-content">{{template "user/profile_projects" .}}</div>
+		</div>
+	</div>
+{{else}}
+	{{template "user/profile_layout_start" .}}
+	<div class="org-subpage-content">{{template "user/profile_projects" .}}</div>
+	{{template "user/profile_layout_end" .}}
+{{end}}
+{{template "base/footer" .}}

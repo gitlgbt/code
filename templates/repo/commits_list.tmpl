@@ -1,0 +1,8 @@
+{{/* GitHub-style commit history using the shared commit row. */}}
+<div class="ui attached table segment commit-table">
+  <ul class="gitea-github-theme-templates-commits-list">
+    {{range .Commits}}
+      {{template "repo/commit_list_item" dict "Commit" . "Page" $}}
+    {{end}}
+  </ul>
+</div>

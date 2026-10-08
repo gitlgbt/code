@@ -1,0 +1,94 @@
+{
+  "name": "@lutinglt/gitea-github-theme",
+  "version": "1.27.0",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "lutinglt",
+    "url": "https://github.com/lutinglt"
+  },
+  "type": "module",
+  "engines": {
+    "bun": ">=1.3.14"
+  },
+  "exports": {
+    "./core": "./src/index.ts",
+    "./vite-plugin": "./src/vite-plugin/index.ts",
+    "./styles": "./styles/index.ts",
+    "./styles/common": "./styles/common/index.ts",
+    "./themes": "./themes/index.ts",
+    "./primer": "./primer/index.ts"
+  },
+  "scripts": {
+    "lint": "bunx --bun eslint .",
+    "fmt": "bunx --bun prettier --write .",
+    "check": "tsc -b",
+    "bundle": "bun check && bunx --bun vite build && bun scripts/assembleForgejo.ts",
+    "dev": "bun bundle && bun sync:theme",
+    "dev:forgejo": "bun dev/dev.ts start",
+    "dev:forgejo:stop": "bun dev/dev.ts stop",
+    "dev:forgejo:sync": "bun dev/dev.ts sync",
+    "dev:forgejo:watch": "bun dev/dev.ts watch",
+    "dev:forgejo:seed": "bun dev/dev.ts seed",
+    "dev:forgejo:reset": "bun dev/dev.ts reset",
+    "commit": "bun fmt && bun bundle && bun vitest",
+    "version": "bun scripts/version.ts",
+    "release": "bun bundle",
+    "bundle:ci": "bun bundle && bun vitest",
+    "sync:theme": "bun scripts/syncTheme.ts",
+    "update:primer": "bun scripts/buildPrimerTSToken.ts",
+    "update:gitea": "bun scripts/updateGitea.ts",
+    "update:snapshot": "bun vitest --update",
+    "install:clean": "rm -rf node_modules bun.lock bun.lockb && bun install"
+  },
+  "devDependencies": {
+    "@catppuccin/palette": "^1.8.0",
+    "@eslint/js": "^10.0.1",
+    "@primer/primitives": "11.9.0",
+    "@types/node": "^25.9.5",
+    "@vanilla-extract/css": "^1.21.1",
+    "color2k": "^2.0.3",
+    "dotenv": "^17.4.2",
+    "eslint": "^10.6.0",
+    "globals": "^17.7.0",
+    "jiti": "^2.7.0",
+    "lightningcss": "^1.32.0",
+    "prettier": "3.8.1",
+    "prettier-plugin-organize-imports": "^4.3.0",
+    "style-dictionary": "^5.5.0",
+    "typescript": "^7.0.2",
+    "typescript-eslint": "^8.63.0",
+    "undici": "^7.28.0",
+    "vite": "^8.1.4",
+    "vitest": "4.1.10"
+  },
+  "prettier": {
+    "printWidth": 120,
+    "tabWidth": 2,
+    "useTabs": false,
+    "semi": true,
+    "singleQuote": false,
+    "quoteProps": "as-needed",
+    "jsxSingleQuote": false,
+    "trailingComma": "es5",
+    "bracketSpacing": true,
+    "bracketSameLine": true,
+    "arrowParens": "avoid",
+    "proseWrap": "always",
+    "htmlWhitespaceSensitivity": "css",
+    "endOfLine": "lf",
+    "plugins": [
+      "prettier-plugin-organize-imports"
+    ],
+    "organizeImportsSkipDestructiveCodeActions": false,
+    "overrides": [
+      {
+        "files": [
+          "themes/github.ts"
+        ],
+        "options": {
+          "printWidth": 150
+        }
+      }
+    ]
+  }
+}

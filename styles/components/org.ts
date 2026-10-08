@@ -1,0 +1,62 @@
+/*!
+ * Copyright (c) https://github.com/lutinglt
+ *
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { css, cssCombine, themeVars } from "@lutinglt/gitea-github-theme/core";
+
+const org = css`
+  .page-content.organization {
+    /* 组织成员头像 */
+    .members .ui.avatar {
+      border-radius: 9999px;
+    }
+    > .ui.container {
+      /* 组织头像 */
+      > img.org-avatar {
+        margin: 8px 16px 16px 0;
+      }
+      /* 组织信息 */
+      > #org-info {
+        gap: 8px;
+        /* 组织名称 */
+        .org-title > h1 {
+          font-size: 24px;
+        }
+        .org-visibility {
+          margin-left: 8px;
+        }
+        /* 组织描述 */
+        > .markup {
+          color: ${themeVars.color.text.light.num1};
+        }
+        /* 组织信息 */
+        > .meta {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          font-size: 12px;
+          svg {
+            color: ${themeVars.color.text.light.num1};
+          }
+        }
+      }
+    }
+  }
+`;
+
+export default cssCombine(org);

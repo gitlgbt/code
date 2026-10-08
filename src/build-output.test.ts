@@ -1,0 +1,802 @@
+/*!
+ * Copyright (c) https://github.com/lutinglt
+ *
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { execSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { beforeAll, describe, expect, it } from "vitest";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT_DIR = path.resolve(__dirname, "..");
+const DIST_DIR = path.join(ROOT_DIR, "dist");
+const PREFIX = "theme-github-";
+
+// ============================================================================
+// #4: 构建产物基本验证
+// ============================================================================
+
+/** 从 theme.config.ts 推导的预期主题文件名 */
+const EXPECTED_THEME_FILES = [
+  // default
+  `${PREFIX}dark.css`,
+  `${PREFIX}light.css`,
+  `${PREFIX}soft-dark.css`,
+  `${PREFIX}auto.css`,
+  // colorblind
+  `${PREFIX}colorblind-dark.css`,
+  `${PREFIX}colorblind-light.css`,
+  `${PREFIX}colorblind-auto.css`,
+  // tritanopia
+  `${PREFIX}tritanopia-dark.css`,
+  `${PREFIX}tritanopia-light.css`,
+  `${PREFIX}tritanopia-auto.css`,
+  // pink
+  `${PREFIX}pink-dark.css`,
+  `${PREFIX}pink-light.css`,
+  `${PREFIX}pink-soft-dark.css`,
+  `${PREFIX}pink-auto.css`,
+  // gitea
+  `${PREFIX}gitea-dark.css`,
+  `${PREFIX}gitea-light.css`,
+  `${PREFIX}gitea-auto.css`,
+  // catppuccin
+  `${PREFIX}catppuccin-mocha.css`,
+  `${PREFIX}catppuccin-latte.css`,
+  `${PREFIX}catppuccin-frappe.css`,
+  `${PREFIX}catppuccin-macchiato.css`,
+  `${PREFIX}catppuccin-auto.css`,
+  // high contrast
+  `${PREFIX}high-contrast-dark.css`,
+  `${PREFIX}high-contrast-light.css`,
+  `${PREFIX}high-contrast-soft-dark.css`,
+  `${PREFIX}high-contrast-auto.css`,
+  // high contrast colorblind
+  `${PREFIX}high-contrast-colorblind-dark.css`,
+  `${PREFIX}high-contrast-colorblind-light.css`,
+  `${PREFIX}high-contrast-colorblind-auto.css`,
+  // high contrast tritanopia
+  `${PREFIX}high-contrast-tritanopia-dark.css`,
+  `${PREFIX}high-contrast-tritanopia-light.css`,
+  `${PREFIX}high-contrast-tritanopia-auto.css`,
+];
+
+/** auto 主题文件名列表 */
+const AUTO_THEME_FILES = EXPECTED_THEME_FILES.filter(f => f.includes("-auto-") || f.endsWith("-auto.css"));
+
+/** 非 auto 主题文件名列表 */
+const SOLID_THEME_FILES = EXPECTED_THEME_FILES.filter(f => !AUTO_THEME_FILES.includes(f));
+
+describe("构建产物基本验证", () => {
+  // 确保有构建产物
+  try {
+    const hasCss = fs.existsSync(DIST_DIR) && fs.readdirSync(DIST_DIR).some(f => f.endsWith(".css"));
+    if (!hasCss) {
+      execSync("bun run bundle", { cwd: ROOT_DIR, stdio: "pipe" });
+    }
+  } catch {
+    execSync("bun run bundle", { cwd: ROOT_DIR, stdio: "pipe" });
+  }
+
+  it("dist 目录存在且包含主题文件", () => {
+    expect(fs.existsSync(DIST_DIR)).toBe(true);
+    const files = fs.readdirSync(DIST_DIR).filter(f => f.endsWith(".css"));
+    expect(files.length, "dist 目录中应有 CSS 主题文件").toBeGreaterThan(0);
+  });
+
+  it("所有预期主题文件都存在", () => {
+    const actualFiles = new Set(fs.readdirSync(DIST_DIR).filter(f => f.endsWith(".css")));
+    for (const expected of EXPECTED_THEME_FILES) {
+      expect(actualFiles.has(expected), `缺少预期主题文件: ${expected}`).toBe(true);
+    }
+  });
+
+  it("无多余主题文件", () => {
+    const actualFiles = fs.readdirSync(DIST_DIR).filter(f => f.endsWith(".css"));
+    const expectedSet = new Set(EXPECTED_THEME_FILES);
+    const pageStyles = new Set(fs.readdirSync(path.join(ROOT_DIR, "public")).filter(f => f.endsWith(".css")));
+    const extra = actualFiles.filter(f => !expectedSet.has(f) && !pageStyles.has(f));
+    expect(extra, `存在多余主题文件: ${extra.join(", ")}`).toEqual([]);
+  });
+});
+
+it("ships component stylesheets unchanged with valid CSS and a template reference", async () => {
+  const { transform } = await import("lightningcss");
+  const templates = fs
+    .readdirSync(path.join(ROOT_DIR, "templates"), { recursive: true })
+    .filter(file => String(file).endsWith(".tmpl"))
+    .map(file => fs.readFileSync(path.join(ROOT_DIR, "templates", String(file)), "utf-8"))
+    .join("\n");
+  const sources = [
+    ...fs
+      .readdirSync(path.join(ROOT_DIR, "public"))
+      .filter(name => name.endsWith(".css"))
+      .map(name => [name, name]),
+    ...fs
+      .readdirSync(path.join(ROOT_DIR, "components"), { recursive: true })
+      .filter(file => String(file).endsWith(".css"))
+      .map(file => [`components/${String(file)}`, `components/${String(file)}`]),
+    ...["organization.css", "profile-subpages.css", "user-profile.css"].map(name => [name, `components/pages/${name}`]),
+  ];
+  const output = path.join(DIST_DIR, "forgejo", "public", "assets", "css");
+  for (const [source, asset] of sources) {
+    const code = fs.readFileSync(path.join(output, asset));
+    const original = source.startsWith("components/")
+      ? fs.readFileSync(path.join(ROOT_DIR, source))
+      : source.startsWith("organization") || source.startsWith("profile-") || source.startsWith("user-profile")
+        ? fs.readFileSync(path.join(ROOT_DIR, "styles/pages", source))
+        : fs.readFileSync(path.join(ROOT_DIR, "public", source));
+    expect(code.equals(original), `changed component asset: ${asset}`).toBe(true);
+    expect(() => transform({ code, filename: asset })).not.toThrow();
+    expect(templates).toContain(`/css/${asset}`);
+  }
+});
+
+it("stamps every template asset link with the hash of the shipped file", async () => {
+  const { createHash } = await import("node:crypto");
+  const output = path.join(DIST_DIR, "forgejo");
+  const links = fs
+    .readdirSync(path.join(output, "templates"), { recursive: true })
+    .filter(file => String(file).endsWith(".tmpl"))
+    .flatMap(file => [
+      ...fs
+        .readFileSync(path.join(output, "templates", String(file)), "utf-8")
+        .matchAll(/\{\{AssetUrlPrefix\}\}\/((?:css|js)\/[^"?]+)(\?v=[0-9a-f]+)?"/g),
+    ]);
+  expect(links.length).toBeGreaterThan(0);
+  for (const [, asset, version] of links) {
+    const file = path.join(output, "public", "assets", asset);
+    expect(fs.existsSync(file), `template links a missing asset: ${asset}`).toBe(true);
+    const hash = createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+    expect(version, `unversioned asset link: ${asset}`).toBe(`?v=${hash.slice(0, 10)}`);
+  }
+});
+
+it("versions the theme stylesheet link and the auto themes' imports", async () => {
+  const { createHash } = await import("node:crypto");
+  const version = (...files: string[]) => {
+    const hash = createHash("sha256");
+    for (const file of files) hash.update(fs.readFileSync(file));
+    return hash.digest("hex").slice(0, 10);
+  };
+  const themeFiles = fs
+    .readdirSync(DIST_DIR)
+    .filter(name => /^theme-.+\.css$/.test(name))
+    .sort()
+    .map(name => path.join(DIST_DIR, name));
+
+  const headStyle = fs.readFileSync(path.join(DIST_DIR, "forgejo", "templates", "base", "head_style.tmpl"), "utf-8");
+  expect(headStyle).toContain('href="{{AssetUrlPrefix}}/css/index.css?v={{AssetVersion}}"');
+  expect(headStyle).toContain(
+    `href="{{AssetUrlPrefix}}/css/theme-{{ThemeName .SignedUser | PathEscape}}.css?v={{AssetVersion}}-${version(...themeFiles)}"`
+  );
+
+  const autoThemes = themeFiles.filter(file => file.endsWith("-auto.css"));
+  expect(autoThemes.length).toBeGreaterThan(0);
+  for (const file of autoThemes) {
+    const imports = [...fs.readFileSync(file, "utf-8").matchAll(/@import "\.\/([^"?]+)(\?v=[0-9a-f]+)?"/g)];
+    expect(imports.length, path.basename(file)).toBeGreaterThan(0);
+    for (const [, imported, query] of imports)
+      expect(query, `${path.basename(file)} imports ${imported}`).toBe(`?v=${version(path.join(DIST_DIR, imported))}`);
+    expect(fs.readFileSync(path.join(DIST_DIR, "forgejo", "public", "assets", "css", path.basename(file)))).toEqual(
+      fs.readFileSync(file)
+    );
+  }
+});
+
+describe("非 auto 主题 CSS 内容验证", () => {
+  for (const fileName of SOLID_THEME_FILES) {
+    describe(fileName, () => {
+      let css: string;
+
+      beforeAll(() => {
+        css = fs.readFileSync(path.join(DIST_DIR, fileName), "utf-8");
+      });
+
+      it("文件非空", () => {
+        expect(css.length, `${fileName} 不应为空文件`).toBeGreaterThan(0);
+      });
+
+      it("包含 Gitea 主题元信息 (--is-dark-theme 或 color-scheme)", () => {
+        const hasMeta = css.includes("--is-dark-theme") || css.includes("color-scheme");
+        expect(hasMeta, `${fileName} 应包含主题元信息`).toBe(true);
+      });
+
+      it("包含 --color-primary 变量", () => {
+        expect(css, `${fileName} 应包含 --color-primary 变量`).toMatch(/--color-primary\b/);
+      });
+
+      it("包含 --color-body 变量", () => {
+        expect(css, `${fileName} 应包含 --color-body 变量`).toMatch(/--color-body\b/);
+      });
+
+      it("包含 --color-text 变量", () => {
+        expect(css, `${fileName} 应包含 --color-text 变量`).toMatch(/--color-text\b/);
+      });
+
+      it("不包含 vanilla-extract 调试标识", () => {
+        expect(css, `${fileName} 不应包含 _ve_ 调试标识`).not.toMatch(/_ve_/);
+      });
+
+      it("hex 颜色均为小写格式", () => {
+        const hexColors = css.match(/#[0-9a-fA-F]{3,8}\b/g) || [];
+        const upperHex = hexColors.filter(c => /[A-F]/.test(c));
+        expect(upperHex, `${fileName} 中存在大写 hex 颜色: ${upperHex.slice(0, 5).join(", ")}`).toEqual([]);
+      });
+    });
+  }
+});
+
+describe("Forgejo 15 native integration", () => {
+  const requiredSelectors = [
+    "--color-selection-bg",
+    ".repository-tab-nav.page-content.repository",
+    ".repo-about-modal-overlay",
+    ".repo-code-navigation",
+    ".button.primary:not(.ui)",
+    ".total-contributions",
+    ".vch__legend",
+    ".codemirror-container",
+  ];
+
+  const requiredTemplates = [
+    "base/head_navbar.tmpl",
+    "base/head_navbar_icons.tmpl",
+    "base/navbar_drawer.tmpl",
+    "base/navbar_create_items.tmpl",
+    "repo/commit_message_subject.tmpl",
+    "repo/commit_page.tmpl",
+    "repo/diff/box.tmpl",
+    "repo/commits_list.tmpl",
+    "repo/global_header.tmpl",
+    "repo/header.tmpl",
+    "repo/home.tmpl",
+    "repo/home_sidebar_bottom.tmpl",
+    "repo/home_sidebar_top.tmpl",
+    "repo/view_content.tmpl",
+    "repo/view_list.tmpl",
+    "user/dashboard/navbar.tmpl",
+    "user/heatmap.tmpl",
+    "user/auth/signup.tmpl",
+    "user/auth/signup_inner.tmpl",
+  ];
+
+  const unsupportedSelectorFamilies = [
+    ".items-with-main",
+    ".heatmap-grid",
+    ".heatmap-legend-svg",
+    ".branch-selector-dropdown",
+    ".small-menu-items",
+    ".context-user-switch",
+    ".action-view-right-panel",
+    ".repo-view-container",
+    ".clone-panel-popup",
+    ".workflow-graph",
+    ".clone-panel-tab",
+    ".ellipsis-text-items",
+    ".comment-text-line",
+    ".avatar-with-link",
+    ".issue-sidebar-combo",
+    ".item-secondary-info",
+    ".fixed-text",
+    ".empty-list",
+    ".flex-divided-list",
+    ".list-item-large-title",
+    ".list-item-secondary-bar",
+    ".list-item-title-progress",
+    ".scope-middle",
+    ".clear-selection",
+    ".items-full-width",
+    ".code-editor-container",
+    ".navbar-admin-badge",
+    ".theme-menu-item",
+    ".signin-passkey",
+    ".avatar-stack-names",
+    ".gitea-vscode",
+    ".gitea-vscodium",
+  ];
+
+  it("includes Forgejo-native rules in the standard theme output", () => {
+    const css = fs.readFileSync(path.join(DIST_DIR, `${PREFIX}light.css`), "utf-8");
+
+    for (const selector of requiredSelectors) {
+      expect(css, `Forgejo theme output should contain ${selector}`).toContain(selector);
+    }
+  });
+
+  it("uses GitHub's font lists and serves no font files, as GitHub's repository pages do", () => {
+    const css = fs.readFileSync(path.join(DIST_DIR, `${PREFIX}light.css`), "utf-8");
+
+    expect(css).toContain('--fonts-proportional:"Mona Sans VF", -apple-system, BlinkMacSystemFont');
+    expect(css).toContain('--fonts-monospace:"Monaspace Neon", ui-monospace, SFMono-Regular');
+    expect(css).not.toContain("@font-face");
+    expect(fs.existsSync(path.join(DIST_DIR, "assets", "fonts"))).toBe(false);
+  });
+
+  it("matches GitHub's measured repository navigation geometry", () => {
+    const header = fs.readFileSync(path.join(ROOT_DIR, "styles", "templates", "repo", "header.ts"), "utf-8");
+    const secondaryMenu = fs.readFileSync(
+      path.join(ROOT_DIR, "styles", "public", "menu", "secondary_menu.ts"),
+      "utf-8"
+    );
+    const navbarTemplate = fs.readFileSync(path.join(ROOT_DIR, "templates", "base", "head_navbar.tmpl"), "utf-8");
+
+    expect(header).toContain("height: 52px;");
+    expect(header).toContain("padding-top: 16px;");
+    expect(header).toContain("border-bottom: 0;");
+    expect(header).toContain(".navbar-left > #navbar-logo.item");
+    expect(header).toContain("height: 48px;");
+    expect(header).toContain("gap: 8px;");
+    expect(header).toContain("margin: 0 7px;");
+    expect(header).toContain(".repository-navbar-breadcrumb > a.repository-navbar-name");
+    expect(header).toContain("margin: 0 0 8px !important;");
+    expect(header).toContain("padding: 6px 8px !important;");
+    expect(header).toContain("line-height: 21px;");
+    expect(header).toContain("bottom: -8px;");
+    expect(secondaryMenu).toContain(".overflow-menu-items {\n      gap: 8px;");
+    expect(navbarTemplate).toContain("{{ctx.AvatarUtils.Avatar .Owner 16}}");
+    expect(navbarTemplate).not.toContain('class="repository-navbar-owner-avatar"');
+  });
+
+  it("ships the mobile drawer assets and keeps its toggle independent of Forgejo's inline menu", () => {
+    const navbar = fs.readFileSync(path.join(ROOT_DIR, "templates", "base", "head_navbar.tmpl"), "utf-8");
+    expect(navbar).toContain('id="navbar-drawer-toggle" aria-controls="navbar-drawer" aria-haspopup="dialog"');
+    expect(navbar).not.toContain('id="navbar-expand-toggle"');
+    expect(navbar).toContain('href="{{AssetUrlPrefix}}/css/navbar-drawer.css"');
+    expect(navbar).toContain('src="{{AssetUrlPrefix}}/js/navbar-drawer.js"');
+    for (const asset of ["navbar-drawer.css", "assets/js/navbar-drawer.js"]) {
+      expect(fs.readFileSync(path.join(DIST_DIR, asset), "utf-8")).toBe(
+        fs.readFileSync(path.join(ROOT_DIR, "public", asset), "utf-8")
+      );
+    }
+  });
+
+  it("does not emit selector families from the newer Gitea markup", () => {
+    const css = fs.readFileSync(path.join(DIST_DIR, `${PREFIX}light.css`), "utf-8");
+
+    for (const selector of unsupportedSelectorFamilies) {
+      expect(css, `Forgejo theme output should not contain ${selector}`).not.toContain(selector);
+    }
+  });
+
+  it("matches GitHub notification segment sizing without applying the subscriptions switch", () => {
+    const compactMenu = fs.readFileSync(path.join(ROOT_DIR, "styles", "public", "menu", "compact_menu.ts"), "utf-8");
+    const notification = fs.readFileSync(path.join(ROOT_DIR, "styles", "components", "notification.ts"), "utf-8");
+
+    expect(compactMenu).toContain(
+      ".page-content.user.notification > .ui.container:has(> .ui.bottom.active.tab.segment)"
+    );
+    expect(compactMenu).not.toContain(".page-content.user.notification > .ui.container,");
+    expect(notification).toContain("--switch-item-min-height: 32px;");
+    expect(notification).toContain("background: light-dark(");
+    expect(notification).toContain("${themeVars.github.controlTrack.bgColor.rest},");
+    expect(notification).toContain("${themeVars.color.menu}");
+    expect(notification).toContain("gap: 0;");
+    expect(notification).toContain("height: 32px;");
+    expect(notification).toContain("padding: 4px 12px;");
+    expect(notification).toContain("${themeVars.github.controlKnob.bgColor.rest},");
+    expect(notification).toContain("${themeVars.color.hover.self}");
+    expect(notification).toContain("font-weight: 600;");
+  });
+
+  it("keeps header and clone interactions aligned with GitHub controls", () => {
+    const navbar = fs.readFileSync(path.join(ROOT_DIR, "styles", "components", "navbar.ts"), "utf-8");
+    const notification = fs.readFileSync(path.join(ROOT_DIR, "styles", "components", "notification.ts"), "utf-8");
+    const repoContentStyle = fs.readFileSync(
+      path.join(ROOT_DIR, "styles", "templates", "repo", "view_content.ts"),
+      "utf-8"
+    );
+    const repoContentTemplate = fs.readFileSync(path.join(ROOT_DIR, "templates", "repo", "view_content.tmpl"), "utf-8");
+
+    expect(navbar).toContain("> .item {\n        border-radius: ${otherThemeVars.border.radius};");
+    expect(navbar).toContain(".navbar-right:not(:has(.user-menu)) {\n      gap: 8px;");
+    expect(navbar).toContain("> a.item {\n        align-items: center;");
+    expect(notification).toContain("text-decoration: none;");
+    expect(repoContentTemplate).toContain('class="repo-code-navigation"');
+    expect(repoContentTemplate).toContain('class="repo-code-body"');
+    expect(repoContentTemplate).toContain('svg "octicon-terminal" 16');
+    expect(repoContentStyle).toContain("border-radius: 12px;");
+    expect(repoContentStyle).toContain("width: min(400px, calc(100vw - 32px));");
+    expect(repoContentStyle).toContain("grid-template-rows: 32px 32px;");
+    expect(repoContentStyle).toContain("border-radius: ${otherThemeVars.border.radius} !important;");
+    expect(repoContentStyle).toContain("font-size: 14px;");
+    expect(repoContentStyle).toContain("padding: 0 !important;");
+    expect(repoContentStyle).toContain(".repo-code-actions > li > a:hover");
+  });
+
+  it("matches GitHub's repository About, visibility, and code-search details", () => {
+    const headerStyle = fs.readFileSync(path.join(ROOT_DIR, "styles", "templates", "repo", "header.ts"), "utf-8");
+    const headerTemplate = fs.readFileSync(path.join(ROOT_DIR, "templates", "repo", "header.tmpl"), "utf-8");
+    const repoContentStyle = fs.readFileSync(
+      path.join(ROOT_DIR, "styles", "templates", "repo", "view_content.ts"),
+      "utf-8"
+    );
+    const sidebarTemplate = fs.readFileSync(path.join(ROOT_DIR, "templates", "repo", "home_sidebar_top.tmpl"), "utf-8");
+
+    expect(sidebarTemplate).toContain("No description, website, or topics provided.");
+    expect(sidebarTemplate).not.toContain('ctx.Locale.Tr "repo.no_desc"');
+    expect(headerTemplate).toContain("repository-visibility-label");
+    expect(headerStyle).toContain("> .ui.label.repository-visibility-label");
+    expect(repoContentStyle).toContain(".repo-home-sidebar-top > .repo-about-block");
+    expect(repoContentStyle).toContain(".repo-about-block > .repo-about-heading");
+    expect(repoContentStyle).toContain("> .repo-description.no-description");
+    expect(repoContentStyle).toContain("font-style: italic;");
+    expect(repoContentStyle).toContain("min-height: 34px;");
+    expect(repoContentStyle).toContain("flex: 1 1 120px;");
+    expect(repoContentStyle).toContain("> .ui.dropdown.selection");
+    expect(repoContentStyle).toContain("border-radius: 0 !important;");
+  });
+
+  it("matches GitHub's latest-commit row while preserving Forgejo commit data", () => {
+    const repoFilesStyle = fs.readFileSync(
+      path.join(ROOT_DIR, "styles", "components", "repo", "repo_files.ts"),
+      "utf-8"
+    );
+    const repoSidebarStyle = fs.readFileSync(
+      path.join(ROOT_DIR, "styles", "components", "repo", "repo_sidebar.ts"),
+      "utf-8"
+    );
+    const repoHomeStyle = fs.readFileSync(path.join(ROOT_DIR, "styles", "templates", "repo", "home.ts"), "utf-8");
+    const viewListStyle = fs.readFileSync(path.join(ROOT_DIR, "styles", "templates", "repo", "view_list.ts"), "utf-8");
+    const viewListTemplate = fs.readFileSync(path.join(ROOT_DIR, "templates", "repo", "view_list.tmpl"), "utf-8");
+    const latestCommitTemplate = fs.readFileSync(
+      path.join(ROOT_DIR, "templates", "repo", "latest_commit_row.tmpl"),
+      "utf-8"
+    );
+    const commitsListTemplate = fs.readFileSync(path.join(ROOT_DIR, "templates", "repo", "commits_list.tmpl"), "utf-8");
+    const commitSubjectTemplate = fs.readFileSync(
+      path.join(ROOT_DIR, "templates", "repo", "commit_message_subject.tmpl"),
+      "utf-8"
+    );
+
+    expect(latestCommitTemplate).toContain('class="repo-latest-commit-row"');
+    expect(latestCommitTemplate).toContain('<h2 class="sr-only">Latest commit</h2>');
+    expect(latestCommitTemplate).toContain('class="repo-latest-commit-primary"');
+    expect(latestCommitTemplate).toContain('class="repo-latest-commit-avatar" tabindex="0"');
+    expect(latestCommitTemplate).toContain('class="repo-latest-commit-author-card"');
+    expect(latestCommitTemplate).toContain('printf "author:%s" $latestCommitAuthorName');
+    expect(latestCommitTemplate).toContain('QueryEscape (printf "author:%s" $latestCommitAuthorName)');
+    expect(latestCommitTemplate).toContain('class="repo-latest-commit-actions"');
+    expect(latestCommitTemplate).toContain('{{printf "%.7s" .LatestCommit.ID.String}}');
+    expect(latestCommitTemplate).toContain(
+      "{{if and .LatestCommit.Signature .LatestCommitVerification .LatestCommitVerification.Verified}}"
+    );
+    expect(latestCommitTemplate).toContain('template "repo/shabox_badge"');
+    expect(latestCommitTemplate).toContain('template "repo/commit_statuses"');
+    expect(latestCommitTemplate).toContain('template "repo/commit_message_subject"');
+    expect(commitsListTemplate).toContain('template "repo/commit_list_item"');
+    expect(fs.readFileSync(path.join(ROOT_DIR, "templates/repo/commit_list_item.tmpl"), "utf-8")).toContain(
+      'template "repo/commit_message_subject"'
+    );
+    expect(commitSubjectTemplate).toContain('StringUtils.Cut .Summary " (#"');
+    expect(commitSubjectTemplate).toContain('"class=\\"ref-issue\\""');
+    expect(commitSubjectTemplate).toContain(
+      "{{- RenderCommitMessageLinkSubject .Context $subject .CommitLink .Metas}} ({{$renderedReference}})"
+    );
+    expect(viewListTemplate).not.toContain('{{template "repo/latest_commit" .}}');
+    expect(viewListTemplate).toContain('template "repo/latest_commit_row"');
+    expect(viewListStyle).toContain("min-height: 52px;");
+    expect(viewListStyle).toContain(".repo-latest-commit-row");
+    expect(viewListStyle).toContain(".repo-latest-commit-row > .sr-only");
+    expect(viewListStyle).toContain("clip: rect(0, 0, 0, 0);");
+    expect(viewListStyle).toContain("min-height: 44px;");
+    expect(viewListStyle).toContain("flex: 0 0 28px;");
+    expect(viewListStyle.replace(/\s+/g, " ")).toContain(".repo-latest-commit-message > .message-wrapper a:hover");
+    expect(viewListStyle).toContain("color: ${themeVars.github.fgColor.accent};");
+    expect(viewListStyle).toContain(".repo-latest-commit-attribution:has(");
+    expect(viewListStyle).toContain("margin-left: 8px;");
+    expect(viewListStyle).toContain("#repo-files-table .repo-file-cell.name > svg");
+    expect(viewListStyle).toContain("color: ${themeVars.color.text.light.num1};");
+    expect(viewListStyle).toContain("text-transform: capitalize;");
+    expect(repoHomeStyle).toContain("column-gap: 16px;");
+    expect(repoHomeStyle).toContain(".language-stats-details .item");
+    expect(repoHomeStyle).toContain("padding: 0;");
+    expect(repoSidebarStyle).toContain("margin-right: 0;");
+    expect(repoSidebarStyle).toContain("margin-right: 4px;");
+    expect(repoFilesStyle).not.toContain("&.repo-file-last-commit");
+  });
+
+  it("ports the Forgejo commit page to GitHub's header, metadata card, and diff layout", () => {
+    const commitPageStyle = fs.readFileSync(
+      path.join(ROOT_DIR, "styles", "templates", "repo", "commit_page.ts"),
+      "utf-8"
+    );
+    const commitPageTemplate = fs.readFileSync(path.join(ROOT_DIR, "templates", "repo", "commit_page.tmpl"), "utf-8");
+
+    expect(commitPageTemplate).toContain('class="page-content repository diff commit-page"');
+    expect(commitPageTemplate).toContain('id="commit-title">Commit <code>{{printf "%.7s" .CommitID}}');
+    expect(commitPageTemplate).toContain('class="commit-attribution"');
+    expect(commitPageTemplate).toContain('class="commit-card"');
+    expect(commitPageTemplate).toContain('class="commit-meta-row"');
+    expect(commitPageTemplate).toContain('class="commit-stats-row"');
+    expect(commitPageTemplate).toContain('data-clipboard-text="{{.CommitID}}"');
+    expect(commitPageTemplate).toContain("{{if and .Commit.Signature .Verification.Verified}}");
+    expect(commitPageTemplate).toContain('template "repo/diff/box"');
+    expect(commitPageTemplate).not.toContain('template "repo/commit_header"');
+    const diffBoxTemplate = fs.readFileSync(path.join(ROOT_DIR, "templates", "repo", "diff", "box.tmpl"), "utf-8");
+    expect(diffBoxTemplate).toContain('class="diff-file-tree-panel not-mobile"');
+    expect(diffBoxTemplate).toContain('class="diff-file-tree-scroll"');
+    expect(diffBoxTemplate).toContain('class="diff-file-tree-controls"');
+    expect(diffBoxTemplate).toContain('id="diff-file-tree"');
+    expect(diffBoxTemplate).toContain('id="diff-content-container"');
+    expect(diffBoxTemplate).toContain('class="diff-detail-box diff-box diff-content-controls"');
+    expect(diffBoxTemplate).toContain('class="diff-content-controls-left"');
+    expect(diffBoxTemplate).toContain('class="diff-content-controls-right diff-detail-actions button-row"');
+    expect(diffBoxTemplate).toContain('class="diff-content-body"');
+    expect(diffBoxTemplate).toContain(
+      "const diffTreeVisible = localStorage?.getItem('diff_file_tree_visible') !== 'false';"
+    );
+    expect(commitPageStyle).toContain("> .repository-content-header");
+    const diffViewStyle = fs.readFileSync(path.join(ROOT_DIR, "styles", "components", "repo", "diff_view.ts"), "utf8");
+    expect(diffViewStyle).toContain("min-height: 46px;");
+    expect(diffBoxTemplate).toContain('template "repo/diff/file_header"');
+    expect(commitPageTemplate).toContain('template "repo/diff/change_summary"');
+  });
+
+  it("keeps the adapted repository and commit layouts bounded at phone breakpoints", () => {
+    const headerStyle = fs.readFileSync(path.join(ROOT_DIR, "styles", "templates", "repo", "header.ts"), "utf-8");
+    const homeStyle = fs.readFileSync(path.join(ROOT_DIR, "styles", "templates", "repo", "home.ts"), "utf-8");
+    const viewContentStyle = fs.readFileSync(
+      path.join(ROOT_DIR, "styles", "templates", "repo", "view_content.ts"),
+      "utf-8"
+    );
+    const viewListStyle = fs.readFileSync(path.join(ROOT_DIR, "styles", "templates", "repo", "view_list.ts"), "utf-8");
+    const commitPageStyle = fs.readFileSync(
+      path.join(ROOT_DIR, "styles", "templates", "repo", "commit_page.ts"),
+      "utf-8"
+    );
+
+    for (const style of [headerStyle, homeStyle, viewContentStyle, viewListStyle, commitPageStyle]) {
+      expect(style).toContain("@media (max-width: 767.98px)");
+    }
+
+    expect(headerStyle).toContain("padding-left: 8px;");
+    expect(headerStyle).toContain(".repo-buttons");
+    expect(viewContentStyle).toContain("> .repo-button-row-left");
+    expect(viewContentStyle).toContain("> .repo-button-row-right");
+    expect(viewContentStyle).toContain("width: 100%;");
+    expect(viewContentStyle).toContain("max-height: calc(100vh - 48px);");
+    expect(homeStyle).toContain("grid-template-columns: 100%;");
+    expect(viewListStyle).toContain("max-width: none;");
+    expect(commitPageStyle).toContain("overflow-x: auto;");
+    expect(commitPageStyle).toContain(".commit-meta-row");
+    expect(commitPageStyle).toContain("flex-direction: column;");
+  });
+
+  it("keeps adapted templates in the standard template tree", () => {
+    for (const template of requiredTemplates) {
+      expect(fs.existsSync(path.join(ROOT_DIR, "templates", template)), `missing template: ${template}`).toBe(true);
+    }
+  });
+
+  it("keeps the dashboard context switcher markup scoped for GitHub styling", () => {
+    const dashboardNavbar = fs.readFileSync(
+      path.join(ROOT_DIR, "templates", "user", "dashboard", "navbar.tmpl"),
+      "utf-8"
+    );
+    const dashboardStyles = fs.readFileSync(path.join(ROOT_DIR, "styles", "components", "dashboard.ts"), "utf-8");
+
+    expect(dashboardNavbar).toContain("context-switcher");
+    expect(dashboardNavbar).toContain("context-switcher-item");
+    expect(dashboardNavbar).toContain('svg "octicon-check" 14');
+    expect(dashboardStyles).toContain(".context-switcher-menu");
+    expect(dashboardStyles).toContain("width: 320px;");
+    expect(dashboardStyles).toContain(".context-switcher-check");
+    expect(dashboardStyles).toContain("left: 54px;");
+    expect(dashboardStyles).toContain("font-weight: 400;");
+    expect(dashboardStyles).toContain("line-height: 21px;");
+    expect(dashboardStyles).toContain("flex: 0 0 14px;");
+    expect(dashboardStyles).toContain("border-radius: 9999px;");
+    expect(dashboardStyles).toContain("&.context-switcher-selected");
+    expect(dashboardStyles).toContain("right: 8px;");
+    expect(dashboardStyles).toContain("left: -8px;");
+    expect(dashboardStyles).toContain(".context-switcher-marker");
+    expect(dashboardStyles).toContain("width: 4px;");
+    expect(dashboardStyles).toContain("bottom: 3px;");
+    expect(dashboardStyles).toContain("top: 3px;");
+    expect(dashboardNavbar).toContain("Avatar .SignedUser 14");
+    expect(dashboardNavbar).toContain("Avatar . 14");
+  });
+
+  it("keeps the native dated fallback for zero-contribution heatmap tooltips", () => {
+    const heatmapTemplate = fs.readFileSync(path.join(ROOT_DIR, "templates", "user", "heatmap.tmpl"), "utf-8");
+
+    expect(heatmapTemplate).toContain("data-heatmap-data");
+    expect(heatmapTemplate).not.toContain("data-locale-contributions-zero");
+  });
+
+  it("matches GitHub's sign-in form structure", () => {
+    const signInTemplate = fs.readFileSync(
+      path.join(ROOT_DIR, "templates", "user", "auth", "signin_inner.tmpl"),
+      "utf-8"
+    );
+    const oauthTemplate = fs.readFileSync(
+      path.join(ROOT_DIR, "templates", "user", "auth", "oauth_container.tmpl"),
+      "utf-8"
+    );
+
+    expect(signInTemplate).toContain("signin-field-label");
+    expect(signInTemplate).toContain("signin-logo");
+    expect(signInTemplate).toContain('role="heading" aria-level="1"');
+    expect(signInTemplate).toContain("Sign in to {{AppDisplayName}}");
+    expect(signInTemplate).not.toContain('class="required field');
+    expect(signInTemplate).not.toContain('name="remember"');
+    expect(signInTemplate).toContain('href="{{AppSubUrl}}/user/forgot_password"');
+    expect(oauthTemplate).toContain("Continue with {{$provider.DisplayName}}");
+    expect(oauthTemplate).not.toContain("sign_in_with_provider");
+  });
+
+  it("keeps registration form and account-linking contracts while sharing the auth presentation", () => {
+    const auth = path.join(ROOT_DIR, "templates", "user", "auth");
+    const page = fs.readFileSync(path.join(auth, "signup.tmpl"), "utf-8");
+    const form = fs.readFileSync(path.join(auth, "signup_inner.tmpl"), "utf-8");
+    expect(page).toContain('{{template "user/auth/signup_inner" .}}');
+    expect(form).toContain('action="{{.SignUpLink}}" method="post"');
+    for (const field of ["user_name", "email", "password", "retype"]) {
+      expect(form).toContain(`name="${field}"`);
+      expect(form).toContain(`value="{{.${field}}}"`);
+      expect(form).toContain(`for="${field}"`);
+    }
+    expect(form).toContain(".DisableRegistrationReason");
+    expect(form).toContain("{{if .DisableRegistration}}");
+    expect(form).toContain("{{if not .DisablePassword}}");
+    expect(form).toContain(".LinkAccountModeRegister");
+    expect(form).toContain('"auth.oauth_signup_title"');
+    expect(form).toContain('"auth.oauth_signup_submit"');
+    expect(form).toContain('{{template "custom/signup_top"}}');
+    expect(form).toContain('{{template "user/auth/captcha" .}}');
+    expect(form).toContain('{{template "user/auth/oauth_container" .}}');
+    expect(form).toContain('{{template "base/alert" .}}');
+    expect(form.match(/autocomplete="new-password" required/g)).toHaveLength(2);
+    expect(form).toContain('class="ui form{{if not .LinkAccountMode}} ignore-dirty{{end}}"');
+    expect(form).toContain('"auth.hint_login" (printf "%s/user/login" AppSubUrl)');
+    expect(form).toContain('class="signin-branding"');
+    expect(form).toContain('class="signin-logo"');
+    expect(form).toContain('class="signin-footer"');
+    expect(form).not.toContain("ui top attached header");
+  });
+
+  it("preserves Forgejo's native two-factor form contracts in the shared challenge layout", () => {
+    const authDirectory = path.join(ROOT_DIR, "templates", "user", "auth");
+    const challenge = fs.readFileSync(path.join(authDirectory, "twofa_challenge.tmpl"), "utf-8");
+
+    for (const [file, recovery] of [
+      ["twofa.tmpl", "false"],
+      ["twofa_scratch.tmpl", "true"],
+    ]) {
+      const page = fs.readFileSync(path.join(authDirectory, file), "utf-8");
+      expect(page).toContain(`"user/auth/twofa_challenge" (dict "ctxData" . "Recovery" ${recovery})`);
+      expect(page).toContain('{{template "base/head" .}}');
+      expect(page).toContain('{{template "base/footer" .}}');
+    }
+
+    expect(challenge).toContain('action="{{.Link}}" method="post"');
+    expect(challenge).toContain('{{template "base/alert" .}}');
+    expect(challenge).toContain('id="passcode" name="passcode" type="text"');
+    expect(challenge).toContain('autocomplete="one-time-code"');
+    expect(challenge).toContain('inputmode="numeric" pattern="[0-9]*" autofocus required');
+    expect(challenge).toContain('id="token" name="token" type="text"');
+    expect(challenge).toContain('autocomplete="off" autocapitalize="none" spellcheck="false" autofocus required');
+    expect(challenge).toContain('aria-label="{{ctx.Locale.Tr "passcode"}}"');
+    expect(challenge).toContain('aria-label="{{ctx.Locale.Tr "auth.scratch_code"}}"');
+    expect(challenge).toContain('href="{{AppSubUrl}}/user/two_factor"');
+    expect(challenge).toContain('href="{{AppSubUrl}}/user/two_factor/scratch"');
+    expect(challenge).not.toContain('class="page-content user signin');
+    expect(challenge).not.toContain("tw-max-w-2xl");
+  });
+});
+
+describe("auto 主题 CSS 内容验证", () => {
+  for (const fileName of AUTO_THEME_FILES) {
+    describe(fileName, () => {
+      let css: string;
+
+      beforeAll(() => {
+        css = fs.readFileSync(path.join(DIST_DIR, fileName), "utf-8");
+      });
+
+      it("文件非空", () => {
+        expect(css.length, `${fileName} 不应为空文件`).toBeGreaterThan(0);
+      });
+
+      it("包含 @import 和 prefers-color-scheme 媒体查询", () => {
+        const hasImport = css.includes("@import");
+        const hasMediaQuery = css.includes("prefers-color-scheme");
+        expect(hasImport && hasMediaQuery, `${fileName} 应包含 @import 和 prefers-color-scheme`).toBe(true);
+      });
+    });
+  }
+});
+
+describe("暗/亮主题语义验证", () => {
+  /** 从文件名推断是否为暗色主题 */
+  function isDarkTheme(fileName: string): boolean {
+    if (fileName.includes("-light")) return false;
+    if (fileName.includes("-latte")) return false;
+    return true; // dark, soft-dark, mocha, frappe, macchiato 等默认为暗色
+  }
+
+  for (const fileName of SOLID_THEME_FILES) {
+    it(`${fileName}: color-scheme 与主题类型匹配`, () => {
+      const css = fs.readFileSync(path.join(DIST_DIR, fileName), "utf-8");
+      const dark = isDarkTheme(fileName);
+
+      if (dark) {
+        expect(css, `${fileName} 暗色主题应包含 color-scheme: dark`).toMatch(/color-scheme:\s*dark/);
+      } else {
+        expect(css, `${fileName} 亮色主题应包含 color-scheme: light`).toMatch(/color-scheme:\s*light/);
+      }
+    });
+  }
+});
+
+// ============================================================================
+// CSS 文件大小增长限制 — 防止意外膨胀
+// ============================================================================
+
+/** 单文件大小上限 */
+const SIZE_LIMITS = {
+  /** auto 主题仅有 @import + 元信息，应保持极小 */
+  AUTO_MAX: 1 * 1024, // 1 KB
+  /** 非 auto 主题包含完整主题变量 + 公共样式，当前约 207-216 KB */
+  SOLID_MAX: 220 * 1024, // 220 KB (给予主题页面样式增长空间)
+  /** 所有 CSS 文件总大小上限，当前约 2.6 MB */
+  TOTAL_MAX: 5 * 1024 * 1024, // 5 MB
+} as const;
+
+describe("CSS 文件大小限制", () => {
+  it("所有 auto 主题文件大小 < 1KB", () => {
+    const oversized: string[] = [];
+    for (const fileName of AUTO_THEME_FILES) {
+      const size = fs.statSync(path.join(DIST_DIR, fileName)).size;
+      if (size >= SIZE_LIMITS.AUTO_MAX) {
+        oversized.push(`${fileName}: ${(size / 1024).toFixed(1)}KB`);
+      }
+    }
+    expect(
+      oversized,
+      `以下 auto 主题文件体积超过 ${SIZE_LIMITS.AUTO_MAX / 1024}KB 上限:\n${oversized.join("\n")}`
+    ).toEqual([]);
+  });
+
+  it("所有非 auto 主题文件大小 < 220KB", () => {
+    const oversized: string[] = [];
+    for (const fileName of SOLID_THEME_FILES) {
+      const size = fs.statSync(path.join(DIST_DIR, fileName)).size;
+      if (size >= SIZE_LIMITS.SOLID_MAX) {
+        oversized.push(`${fileName}: ${(size / 1024).toFixed(1)}KB`);
+      }
+    }
+    expect(
+      oversized,
+      `以下非 auto 主题文件体积超过 ${SIZE_LIMITS.SOLID_MAX / 1024}KB 上限:\n${oversized.join("\n")}`
+    ).toEqual([]);
+  });
+
+  it("所有 CSS 文件总大小 < 5MB", () => {
+    let totalSize = 0;
+    for (const fileName of EXPECTED_THEME_FILES) {
+      totalSize += fs.statSync(path.join(DIST_DIR, fileName)).size;
+    }
+    expect(
+      totalSize,
+      `CSS 文件总大小 ${(totalSize / 1024 / 1024).toFixed(2)}MB 超过 ${SIZE_LIMITS.TOTAL_MAX / 1024 / 1024}MB 上限`
+    ).toBeLessThan(SIZE_LIMITS.TOTAL_MAX);
+  });
+});
