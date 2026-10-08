@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 212 212">
+  <style>
+    @keyframes draw-orange{0%{stroke-dashoffset:200}25%{stroke-dashoffset:200}50%{stroke-dashoffset:0}to{stroke-dashoffset:0}}@keyframes draw-red{0%{stroke-dashoffset:130}25%{stroke-dashoffset:0}50%,to{stroke-dashoffset:0}}@keyframes red-circle{0%{opacity:0}20%{opacity:0;stroke-width:0}25%{opacity:1;stroke-width:15}to{opacity:1}}@keyframes orange-circle{0%{opacity:0}45%{opacity:0;stroke-width:0}50%{opacity:1;stroke-width:15}to{opacity:1}}@keyframes fade{0%,90%{opacity:1}to{opacity:0}}circle,path{fill:none;stroke:#000;stroke-width:15}path{stroke-width:25}.orange{stroke:#f60}.red{stroke:#d40000}
+  </style>
+  <g transform="translate(6 6)">
+    <g style="animation:fade 2000ms ease-in-out 5ms infinite">
+      <path d="M58 168V70a50 50 0 0 1 50-50h20" class="orange" style="stroke-dasharray:200;stroke-dashoffset:200;animation:draw-orange 2000ms ease-out 5ms infinite"/>
+      <path d="M58 168v-30a50 50 0 0 1 50-50h20" class="red" style="stroke-dasharray:130;stroke-dashoffset:130;animation:draw-red 2000ms ease-out 5ms infinite"/>
+      <circle cx="142" cy="20" r="18" class="orange" style="opacity:0;animation:orange-circle 2000ms ease-out 5ms infinite"/>
+      <circle cx="142" cy="88" r="18" class="red" style="opacity:0;animation:red-circle 2000ms ease-out 5ms infinite"/>
+    </g>
+    <circle cx="58" cy="180" r="18" class="red"/>
+  </g>
+</svg>
