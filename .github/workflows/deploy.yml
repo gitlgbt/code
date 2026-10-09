@@ -6,7 +6,6 @@ on:
 
 concurrency:
   group: deploy
-  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -21,13 +20,36 @@ jobs:
       - uses: actions/checkout@v5
 
       - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+
 
       - name: Build
         run: |
           bun install
           bun run bundle
+
+
+      - name: Prepare settings
+        env:
+          ALL_SECRETS: ${{ toJSON(secrets) }}
+        run: |
+          content=$(cat deploy/app.ini)
+          for name in $(grep -o '\${[A-Za-z0-9_]*}' deploy/app.ini | tr -d '${}' | sort -u); do
+            value=$(jq -r --arg k "$name" '.[$k] // empty' <<< "$ALL_SECRETS")
+            [ -n "$value" ] || exit 1
+            content=${content//"\${$name}"/"$value"}
+          done
+          printf '%s\n' "$content" | awk '
+            /^[ \t]*($|[#;])/ { next }
+            /^[ \t]*\[/ { sec = $0; gsub(/^[ \t]*\[|\][ \t]*$/, "", sec); gsub(/\./, "_0X2E_", sec); gsub(/-/, "_0X2D_", sec); next }
+            { i = index($0, "="); k = substr($0, 1, i - 1); v = substr($0, i + 1); gsub(/^[ \t]+|[ \t]+$/, "", k); gsub(/^[ \t]+|[ \t]+$/, "", v); print "FORGEJO__" sec "__" k "=" v }
+          ' > /tmp/forgejo.env
+
+      - name: Prepare files
+        run: |
+          mkdir -p /tmp/stage/public custom
+          cp -a dist/forgejo/templates /tmp/stage/templates
+          cp -a dist/forgejo/public/assets /tmp/stage/public/assets
+          cp -a custom/. /tmp/stage/
 
       - name: Setup SSH
         run: |
@@ -36,26 +58,27 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -p ${{ secrets.SERVER_PORT }} -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
 
-      - name: Deploy Forgejo
-        env:
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      - name: Upload
         run: |
-          ssh $SSH_OPTS $HOST "mkdir -p $APP"
+          # upload compose file and settings
+          ssh $SSH_OPTS $HOST "mkdir -p $APP && rm -f $APP/.env"
           ssh $SSH_OPTS $HOST "cat > $APP/docker-compose.yml" < deploy/docker-compose.yml
-          printf 'DB_PASSWORD=%s\n' "$DB_PASSWORD" | ssh $SSH_OPTS $HOST "cat > $APP/.env && chmod 600 $APP/.env"
-          ssh $SSH_OPTS $HOST "cd $APP && docker compose pull && docker compose up -d"
-
-      - name: Deploy
-        run: |
-          ssh $SSH_OPTS $HOST "rm -rf $REMOTE/templates.new $REMOTE/assets.new && mkdir -p $REMOTE/templates.new $REMOTE/assets.new $REMOTE/public"
-          tar -C dist/forgejo/templates -cf - . | ssh $SSH_OPTS $HOST "tar -C $REMOTE/templates.new -xf -"
-          tar -C dist/forgejo/public/assets -cf - . | ssh $SSH_OPTS $HOST "tar -C $REMOTE/assets.new -xf -"
-          # swap in the new versions (old files are deleted) and restart
-          ssh $SSH_OPTS $HOST "rm -rf $REMOTE/templates $REMOTE/public/assets && mv $REMOTE/templates.new $REMOTE/templates && mv $REMOTE/assets.new $REMOTE/public/assets && cd $APP && docker restart forgejo"
-
-      - name: Test deploy
-        run: |
-          for p in / /explore/repos /explore/users /user/login /user/sign_up; do
-            curl -fsS -o /dev/null --retry 20 --retry-delay 3 --retry-connrefused "$SITE_URL$p" || { echo "FAILED: $p"; exit 1; }
+          ssh $SSH_OPTS $HOST "umask 077 && cat > $APP/forgejo.env" < /tmp/forgejo.env
+          # upload /templates, /public and /options folders (old files are deleted)
+          for dir in templates public options; do
+            [ -d /tmp/stage/$dir ] || continue
+            ssh $SSH_OPTS $HOST "rm -rf $REMOTE/$dir.new && mkdir -p $REMOTE/$dir.new"
+            tar -C /tmp/stage/$dir -cf - . | ssh $SSH_OPTS $HOST "tar -C $REMOTE/$dir.new -xf -"
+            ssh $SSH_OPTS $HOST "rm -rf $REMOTE/$dir && mv $REMOTE/$dir.new $REMOTE/$dir"
           done
-          echo "OK"
+
+      # restart
+      - name: Start Forgejo
+        run: ssh $SSH_OPTS $HOST "cd $APP && docker compose pull && docker compose up -d --force-recreate"
+
+      # check
+      - name: Test
+        run: |
+          for p in / /explore/repos /explore/users /user/login /user/sign_up /assets/css/theme-github-auto.css; do
+            curl -fsS -o /dev/null --retry 20 --retry-delay 3 --retry-connrefused "$SITE_URL$p" || exit 1
+          done

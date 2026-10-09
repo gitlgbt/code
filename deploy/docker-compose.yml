@@ -3,21 +3,11 @@ services:
     image: codeberg.org/forgejo/forgejo:16.0.3
     container_name: forgejo
     restart: always
+    env_file:
+      - ./forgejo.env
     environment:
       - USER_UID=1000
       - USER_GID=1000
-      - FORGEJO__database__DB_TYPE=mysql
-      - FORGEJO__database__HOST=10.0.0.150:3306
-      - FORGEJO__database__NAME=forgejo_db
-      - FORGEJO__database__USER=forgejo
-      - FORGEJO__database__PASSWD=${DB_PASSWORD}
-      - FORGEJO__server__DOMAIN=git.lgbt
-      - FORGEJO__server__ROOT_URL=https://git.lgbt/
-      - FORGEJO__server__SSH_DOMAIN=git.lgbt
-      - FORGEJO__server__SSH_PORT=222
-      - FORGEJO__server__LANDING_PAGE=home
-      - FORGEJO__ui__THEMES=github-auto,github-light,github-dark,forgejo-auto,forgejo-light,forgejo-dark
-      - FORGEJO__ui__DEFAULT_THEME=github-auto
     volumes:
       - ./forgejo:/data
       - /etc/timezone:/etc/timezone:ro
