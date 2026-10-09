@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const root = process.cwd();
@@ -107,7 +107,14 @@ const stampAssetLinks = (directory: string): void => {
         (link, asset) => `${link}?v=${contentVersion(join(assets, asset))}`
       );
       if (stamped !== source) writeFileSync(path, stamped);
+      
     }
   }
 };
 stampAssetLinks(templates);
+for (const dir of ["templates", "public", "options"]) {
+  const source = join(root, "custom", dir);
+  if (existsSync(source)) cpSync(source, join(output, dir), { recursive: true });
+}
+mkdirSync(join(output, "public", "assets", "img"), { recursive: true });
+mkdirSync(join(output, "options"), { recursive: true });

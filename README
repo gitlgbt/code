@@ -1,1 +1,16 @@
-git.lgbt mono repo
+# git.lgbt
+---
+Momo Repo for git.lgbt make form too many opensource
+
+
+
+---
+install
+```bash
+bun install
+bun bundle
+```
+run
+```bash
+bun dev:forgejo:watch
+```

@@ -1,102 +1,52 @@
-.page-footer.github-footer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 16px;
-  background: var(--color-body);
+.page-footer {
+  padding: 40px 16px 24px;
   border-top: 1px solid var(--color-light-border);
-  border-right: 0;
-  border-bottom: 0;
-  border-left: 0;
+  background: var(--color-body);
   color: var(--color-text-light-1);
-  font-size: 12px;
-  line-height: 18px;
+  font-size: 14px;
 }
-
-.github-footer .footer-main,
-.github-footer .footer-brand,
-.github-footer .footer-links,
-.github-footer .footer-details {
+.page-footer .grid {
+  display: grid;
+  grid-template-columns: 1.5fr repeat(4, 1fr);
+  gap: 32px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+.page-footer b { display: block; margin-bottom: 8px; color: var(--color-text); }
+.page-footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.page-footer a { color: var(--color-text-light-1); }
+.page-footer a:hover { color: var(--color-primary); }
+.page-footer .branding img { height: 32px; width: auto; }
+.page-footer .powered-by { margin-top: 16px; display: grid; gap: 6px; }
+.page-footer .powered-by img { height: 20px; width: auto; }
+.page-footer .footer-bottom-grid {
   display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.github-footer .footer-main {
-  gap: 16px;
-  transition: opacity 150ms ease;
-  max-width: 100%;
-}
-
-.github-footer .footer-brand {
-  flex-shrink: 0;
-  gap: 8px;
-}
-
-.github-footer .footer-links,
-.github-footer .footer-details {
   flex-wrap: wrap;
-  gap: 0 16px;
-  min-width: 0;
-  text-align: center;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 1280px;
+  margin: 32px auto 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-light-border);
+}
+.page-footer .only-mobile { display: none; margin: 8px 0 0; }
+.page-footer .symbol-of-tolerance { display: none; }
+
+
+.page-footer .dark-logo { display: none; }
+[data-theme*="dark"] .page-footer .light-logo { display: none; }
+[data-theme*="dark"] .page-footer .dark-logo { display: inline; }
+@media (prefers-color-scheme: dark) {
+  [data-theme$="auto"] .page-footer .light-logo { display: none; }
+  [data-theme$="auto"] .page-footer .dark-logo { display: inline; }
 }
 
-.github-footer .footer-details {
-  gap: 4px 16px;
-  overflow-wrap: anywhere;
+@media (max-width: 991px) {
+  .page-footer .grid { grid-template-columns: 1fr 1fr; }
+  .page-footer .not-mobile { display: none; }
+  .page-footer .only-mobile { display: block; }
 }
-
-.github-footer .footer-logo {
-  display: block;
-  flex-shrink: 0;
-}
-
-.github-footer .footer-logo::before {
-  content: "";
-  display: block;
-  width: 24px;
-  height: 24px;
-  background: currentColor;
-  mask: var(--footer-logo) center / contain no-repeat;
-}
-
-.github-footer a:not(.item),
-.github-footer .ui.dropdown {
-  color: inherit;
-  font-size: inherit;
-  transition: color 150ms ease;
-}
-
-.github-footer a:not(.item):hover,
-.github-footer .ui.dropdown:hover > .flex-text-inline {
-  color: var(--color-primary);
-  text-decoration: underline;
-}
-
-.github-footer .flex-text-inline {
-  gap: 4px;
-}
-
-@media (max-width: 1011px) {
-  .github-footer .footer-main {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .github-footer .footer-links {
-    order: -1;
-  }
-}
-
-/* Match the subdued idle footer in the reference without dimming touch controls. */
-@media (hover: hover) and (pointer: fine) {
-  .github-footer .footer-main {
-    opacity: 0.3;
-  }
-
-  .github-footer .footer-main:hover,
-  .github-footer .footer-main:focus-within {
-    opacity: 1;
-  }
+@media (max-width: 480px) {
+  .page-footer .grid { grid-template-columns: 1fr; }
 }

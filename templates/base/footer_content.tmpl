@@ -1,39 +1,110 @@
-{{/* Keep Forgejo's native footer settings, language menu, and custom links. */}}
 <link rel="stylesheet" href="{{AssetUrlPrefix}}/css/site-footer.css">
-<footer class="page-footer github-footer" aria-label="{{ctx.Locale.Tr "aria.footer"}}">
-	<div class="footer-main">
-		{{if ShowFooterPoweredBy}}
-			<div class="footer-brand">
-				<a class="footer-logo" style="--footer-logo: url('{{AssetUrlPrefix}}/img/logo.svg')" href="{{AppSubUrl}}/" aria-label="{{ctx.Locale.Tr "home"}}">
-				</a>
-				<a target="_blank" rel="noopener noreferrer" href="https://forgejo.org">{{ctx.Locale.Tr "powered_by" "Forgejo"}}</a>
+<footer class="page-footer" role="group" aria-label="{{ctx.Locale.Tr "aria.footer"}}">
+	<div class="grid" aria-label="{{ctx.Locale.Tr "aria.footer.links"}}">
+		<div class="not-mobile">
+			
+			<div class="branding" aria-hidden="true">
+				<img class="light-logo" loading="lazy" src="/assets/img/gitlgbt.png" alt="{{ctx.Locale.Tr "logo"}}">
+				<img class="dark-logo" loading="lazy" src="/assets/img/gitlgbt.png" alt="{{ctx.Locale.Tr "logo"}}">
 			</div>
-		{{end}}
-		<nav class="footer-links" aria-label="{{ctx.Locale.Tr "aria.footer.links"}}">
-			<div class="ui dropdown upward language">
-				<span class="flex-text-inline">{{svg "octicon-globe" 14}} {{ctx.Locale.LangName}}</span>
+
+			<div class="powered-by">
+				<div class="title">{{ctx.Locale.Tr "powered_by" ""}}</div>
+				<a target="_blank" rel="noopener noreferrer" href="https://forgejo.org" aria-label="Forgejo">
+					
+					<div class="branding" aria-hidden="true">
+						<img class="light-logo" style="height: 35px;" loading="lazy" src="/assets/img/forgejo-wordmark.svg" alt="{{ctx.Locale.Tr "cfooter.forgejo_logo"}}">
+                        <img class="dark-logo" style="height: 35px;" loading="lazy" src="/assets/img/forgejo-wordmark.svg" alt="{{ctx.Locale.Tr "cfooter.forgejo_logo"}}">
+					</div>
+			
+				</a>
+				{{ctx.Locale.Tr "cfooter.poweredby.mods"}}
+				<a href="https://fryrvo.com">
+                <a href="https://fryrvo.com" target="_blank" rel="noopener noreferrer">
+                <img class="light-logo" style="height: 35px;" loading="lazy" src="/assets/img/Logo_bg_chrop.png" alt="Mod Logo">
+                <img class="dark-logo" style="height: 35px;" loading="lazy" src="/assets/img/Logo_bg_chrop.png" alt="Mod Logo">
+                </a>
+			</div>
+
+		</div>
+		<div>
+			<b id="codeberg-codeberg">Gitlgbt</b>
+			<ul>
+				<li><a href="https://blog.codeberg.org" target="_blank">{{ctx.Locale.Tr "cfooter.blog"}}</a></li>
+				<li><a href="https://docs.codeberg.org" target="_blank">{{ctx.Locale.Tr "cfooter.docs"}}</a></li>
+				<li><a href="/Codeberg/Community/issues">{{ctx.Locale.Tr "cfooter.issues"}}</a></li>
+				{{if .IsSigned}}
+					<li><a href="/about">{{ctx.Locale.Tr "cfooter.landing"}}</a></li>
+				{{end}}
+				<li><a href="/Codeberg/Contributing">{{ctx.Locale.Tr "cfooter.contrib"}}</a>
+				<li><a href="https://docs.{{AppDomain}}/contact/#abuse" target="_blank">{{ctx.Locale.Tr "moderation.report_abuse"}}</a>
+			</ul>
+		</div>
+
+		<div>
+			<b id="codeberg-association">{{ctx.Locale.Tr "cfooter.association"}}</b>
+			<ul>
+				<li><a href="https://docs.codeberg.org/getting-started/what-is-codeberg/#what-is-codeberg-e.v.%3F" target="_blank">{{ctx.Locale.Tr "cfooter.association.who"}}</a></li>
+				<li><a href="{{ctx.Locale.Tr "cfooter.association.satzung.href"}}" target="_blank">{{ctx.Locale.Tr "cfooter.association.satzung"}}</a></li>
+				<li><a href="https://docs.codeberg.org/improving-codeberg/donate/" target="_blank">{{ctx.Locale.Tr "cfooter.donate"}}</a></li>
+				<li><a href="https://join.codeberg.org" target="_blank">{{ctx.Locale.Tr "cfooter.association.join"}}</a></li>
+				<li><a href="https://docs.codeberg.org/contact/" target="_blank">{{ctx.Locale.Tr "cfooter.association.contact"}}</a></li>
+			</ul>
+		</div>
+
+		<div>
+			<b id="codeberg-service">{{ctx.Locale.Tr "cfooter.service"}}</b>
+			<ul>
+				<li><a href="https://codeberg.page" target="_blank">{{ctx.Locale.Tr "cfooter.service.pages"}}</a></li>
+				<li><a href="https://translate.codeberg.org" target="_blank">{{ctx.Locale.Tr "cfooter.service.i18n"}}</a></li>
+				<li><a href="https://docs.codeberg.org/ci/#using-codeberg's-instance-of-woodpecker-ci" target="_blank">Woodpecker CI</a></li>
+				{{if .EnableSwagger}}
+					<li><a href="{{AppSubUrl}}/api/swagger">Forgejo API</a></li>
+				{{end}}
+				<li><a href="https://status.codeberg.eu" target="_blank">{{ctx.Locale.Tr "cfooter.service.status"}}</a></li>
+			</ul>
+		</div>
+
+		<div>
+			<b id="codeberg-legal">{{ctx.Locale.Tr "cfooter.legal"}}</b>
+			<ul>
+				<li><a href="{{ctx.Locale.Tr "cfooter.legal.impressum.href"}}" target="_blank">{{ctx.Locale.Tr "cfooter.legal.impressum"}}</a></li>
+				<li><a href="/codeberg/org/src/PrivacyPolicy.md" target="_blank">{{ctx.Locale.Tr "cfooter.legal.privacy"}}</a></li>
+				<li><a href="{{AssetUrlPrefix}}/licenses.txt">{{ctx.Locale.Tr "licenses"}}</a></li>
+				<li><a href="/codeberg/org/src/TermsOfUse.md">{{ctx.Locale.Tr "cfooter.legal.tos"}}</a></li>
+			</ul>
+		</div>
+
+
+	</div>
+	<div class="footer-bottom-grid">
+			<p class="only-mobile">
+				<a target="_blank" rel="noopener noreferrer" href="https://forgejo.org">{{ctx.Locale.Tr "powered_by" "Forgejo"}}</a>
+			</p>
+
+
+		</div>
+		<div class="footer-language-switch">
+			<div class="ui language bottom floating slide up dropdown link item button">
+				{{svg "octicon-globe"}}
+				<div class="text">{{ctx.Locale.LangName}}</div>
 				<div class="menu language-menu">
 					{{range .AllLangs}}
 						<a lang="{{.Lang}}" data-url="{{AppSubUrl}}/?lang={{.Lang}}" class="item {{if eq ctx.Locale.Lang .Lang}}active selected{{end}}">{{.Name}}</a>
 					{{end}}
 				</div>
 			</div>
-			<a href="{{AssetUrlPrefix}}/licenses.txt">{{ctx.Locale.Tr "licenses"}}</a>
-			{{if .EnableSwagger}}<a href="{{AppSubUrl}}/api/swagger">API</a>{{end}}
-			{{template "custom/extra_links_footer" .}}
-		</nav>
-		{{if or .ShowFooterVersion .PageIsAdmin (and .TemplateLoadTimes ShowFooterTemplateLoadTime)}}
-			<div class="footer-details" role="group" aria-label="{{ctx.Locale.Tr "aria.footer.software"}}">
-				{{if (or .ShowFooterVersion .PageIsAdmin)}}
-					<span>{{ctx.Locale.Tr "version"}}:
-						{{if .IsAdmin}}<a href="{{AppSubUrl}}/admin/config">{{AppVerNoMetadata}}</a>{{else}}{{AppVerNoMetadata}}{{end}}
-					</span>
-				{{end}}
-				{{if and .TemplateLoadTimes ShowFooterTemplateLoadTime}}
-					<span>{{ctx.Locale.Tr "page"}}: {{LoadTimes .PageStartTime}}</span>
-					<span>{{ctx.Locale.Tr "template"}}{{if .TemplateName}} {{.TemplateName}}{{end}}: {{call .TemplateLoadTimes}}</span>
-				{{end}}
-			</div>
+		</div>
+
+	</div>
+	<div class="tw-hidden">
+		{{if and .TemplateLoadTimes ShowFooterTemplateLoadTime}}
+			{{ctx.Locale.Tr "page"}}: {{LoadTimes .PageStartTime}}<br>
+			{{ctx.Locale.Tr "template"}}{{if .TemplateName}} {{.TemplateName}}{{end}}: {{call .TemplateLoadTimes}}
 		{{end}}
 	</div>
+  {{$linkUpper := StringUtils.ToUpper .Link}}
+	{{if or (not .IsSigned) (eq .Link "") (eq .Link "/about") (StringUtils.HasPrefix .Link "/user") (StringUtils.HasPrefix .Link "/explore") (StringUtils.HasPrefix $linkUpper "/CODEBERG") (StringUtils.HasPrefix $linkUpper "/CODEBERG-E.V.") (StringUtils.HasPrefix $linkUpper "/CODEBERG-INFRASTRUCTURE") (StringUtils.HasPrefix $linkUpper "/CODEBERG-CI")}}
+		<div class="symbol-of-tolerance" role="img"></div>
+	{{end}}
 </footer>

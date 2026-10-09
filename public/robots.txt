@@ -1,0 +1,26 @@
+User-agent: *
+Allow: /
+Disallow: /stage/
+Disallow: /api/
+Content-Signal: search=yes, ai-train=no
+
+# ai shit list
+User-agent: GPTBot
+User-agent: ChatGPT-User
+User-agent: Anthropic-AI
+User-agent: Claude-Web
+User-agent: CCBot
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: Bytespider
+User-agent: Diffbot
+User-agent: FacebookBot
+User-agent: Cohere-ai
+User-agent: PerplexityBot
+User-agent: AhrefsBot
+User-agent: SemrushBot
+User-agent: MJ12bot
+User-agent: DotBot
+Disallow: /
+
+Sitemap: https://fryrvo.com/sitemap-0.xml
