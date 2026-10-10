@@ -4,6 +4,13 @@
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 	<meta name="format-detection" content="telephone=no,date=no,address=no,email=no,url=no">
 </head>
+<tr>
+    <td align="center" style="padding-bottom: 25px;">
+         <a href="{{AppUrl}}" target="_blank" rel="noopener noreferrer">
+         <img src="https://cdn.fryrvo.com/assets/fryrvo_branding/Logo_bg.png" alt="{{AppName}}" width="64" style="display: block; border: 0; max-width: 64px; height: auto; border-radius: 12px;">
+        </a>
+    </td>
+</tr>
 
 {{$recover_url := printf "%suser/recover_account?code=%s" AppUrl (QueryEscape .Code)}}
 <body>
