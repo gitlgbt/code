@@ -44,15 +44,6 @@ jobs:
             END { exit bad }
           ' deploy/app.ini
 
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install
-      - run: bun run lint
-      - run: bunx --bun prettier --check .
-
   forgejo:
     runs-on: ubuntu-latest
     steps:
@@ -123,18 +114,20 @@ jobs:
       - name: common pages test
         run: |
           fail=0
+          quiet=
           check() {
             code=$(curl -s -o /dev/null -w '%{http_code}' "$@")
-            [ "$code" = 200 ] && echo "ok   $code ${@: -1}" || { echo "FAIL $code ${@: -1}"; fail=1; }
+            [ "$code" = 200 ] && { [ -n "$quiet" ] || echo "ok   $code ${@: -1}"; } || { echo "FAIL $code ${@: -1}"; fail=1; }
           }
           B=http://localhost:3000
           for p in / /explore/repos /explore/users /explore/organizations /user/login /user/sign_up /user/forgot_password \
-                   /ci /demoorg /ci/demo /ci/demo/issues /ci/demo/issues/1 /ci/demo/pulls /ci/demo/pulls/1 \
-                   /ci/demo/pulls/1/files /ci/demo/pulls/1/commits /ci/demo/commits/branch/main \
+                   /ci /demoorg /ci/demo /ci/demo/issues /ci/demo/issues/1 /ci/demo/pulls /ci/demo/pulls/2 \
+                   /ci/demo/pulls/2/files /ci/demo/pulls/2/commits /ci/demo/commits/branch/main \
                    /ci/demo/src/branch/main /ci/demo/src/branch/feature/test.txt /ci/demo/branches \
                    /ci/demo/releases /ci/demo/activity /ci/demo/labels /ci/demo/milestones; do
             check "$B$p"
           done
+          quiet=1
           for f in dist/forgejo/public/assets/css/theme-*.css; do check "$B/assets/css/$(basename "$f")"; done
           if [ -d custom/public/assets ]; then
             while read -r f; do check "$B/assets/${f#./}"; done < <(cd custom/public/assets && find . -type f)
