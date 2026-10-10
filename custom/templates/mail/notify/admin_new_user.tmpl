@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+
+	<style>
+		blockquote { padding-left: 1em; margin: 1em 0; border-left: 1px solid grey; color: #777}
+		.footer { font-size:small; color:#666;}
+	</style>
+
+</head>
+
+<body>
+	<ul>
+		<h3>{{.locale.Tr "mail.admin.new_user.user_info"}}: <a href="{{.NewUserUrl}}">@{{.NewUser.Name}}</a></h3>
+		<li>{{.locale.Tr "admin.users.created"}}: {{DateUtils.FullTime .NewUser.CreatedUnix}}</li>
+	</ul>
+	<p> {{.Body | SanitizeHTML}} </p>
+</body>
+</html>
