@@ -1,0 +1,162 @@
+name: Test
+on:
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: bun run bundle:ci
+
+      - name: Check custom/ and deploy/app.ini
+        run: |
+          for d in custom/*/; do
+            [ -d "$d" ] || continue
+            case "$(basename "$d")" in
+              templates|public|options) ;;
+              *) echo "custom/$(basename "$d") is not allowed"; exit 1 ;;
+            esac
+          done
+          if ls custom/options/locale/locale_*.ini > /dev/null 2>&1; then
+            echo "Remove custom/options/locale/locale_*.ini"; exit 1
+          fi
+          awk '
+            /^[ \t]*($|[#;])/ { next }
+            /^[ \t]*\[[^]]+\][ \t]*$/ { insec = 1; next }
+            /^[ \t]*(APP_NAME|RUN_MODE|APP_SLOGAN|RUN_USER|WORK_PATH)[ \t]*=/ {
+              if (insec) { print "Line " NR " must be above the first [section]: " $0; bad = 1 }
+              next
+            }
+            /^[ \t]*[A-Za-z0-9_.-]+[ \t]*=/ {
+              if ($0 ~ /\$/ && $0 !~ /\$\{[A-Za-z0-9_]+\}/) { print "Line " NR ": $ is only allowed as ${SECRET}"; bad = 1 }
+              next
+            }
+            { print "Bad line " NR ": " $0; bad = 1 }
+            END { exit bad }
+          ' deploy/app.ini
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: bun run lint
+      - run: bunx --bun prettier --check .
+
+  forgejo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: bun run bundle
+
+      - name: Start Forgejo
+        run: |
+          IMAGE=$(awk '/^ *image:/ {print $2}' deploy/docker-compose.yml)
+          sed -E 's/\$\{[A-Za-z0-9_]+\}/dummy/g' deploy/app.ini | awk '
+            /^[ \t]*($|[#;])/ { next }
+            /^[ \t]*\[/ { sec = $0; sub(/^[ \t]*\[/, "", sec); sub(/\][ \t]*$/, "", sec); gsub(/\./, "_0X2E_", sec); gsub(/-/, "_0X2D_", sec); next }
+            { i = index($0, "="); k = substr($0, 1, i - 1); v = substr($0, i + 1); gsub(/^[ \t]+|[ \t]+$/, "", k); gsub(/^[ \t]+|[ \t]+$/, "", v); print "FORGEJO__" sec "__" k "=" v }
+          ' > /tmp/forgejo.env
+          mkdir -p /tmp/fj/gitea
+          cp -a dist/forgejo/templates dist/forgejo/public dist/forgejo/options /tmp/fj/gitea/
+          chmod -R 777 /tmp/fj
+          docker run -d --name mailpit -p 1025:1025 -p 8025:8025 axllent/mailpit
+          docker run -d --name fj -p 3000:3000 -v /tmp/fj:/data --env-file /tmp/forgejo.env \
+            --add-host host.docker.internal:host-gateway \
+            -e USER_UID=1000 -e USER_GID=1000 \
+            -e FORGEJO__security__INSTALL_LOCK=true \
+            -e FORGEJO__database__DB_TYPE=sqlite3 \
+            -e FORGEJO__server__ROOT_URL=http://localhost:3000/ \
+            -e FORGEJO__mailer__ENABLED=true -e FORGEJO__mailer__PROTOCOL=smtp \
+            -e FORGEJO__mailer__SMTP_ADDR=host.docker.internal -e FORGEJO__mailer__SMTP_PORT=1025 \
+            -e FORGEJO__mailer__FROM=noreply@localhost \
+            -e FORGEJO__mailer__USER= -e FORGEJO__mailer__PASSWD= \
+            "$IMAGE"
+          for i in $(seq 1 40); do
+            curl -fsS -o /dev/null http://localhost:3000/api/healthz && exit 0
+            sleep 3
+          done
+          docker logs fj --tail 60
+          exit 1
+
+      - name: Create test data
+        run: |
+          F=$(docker exec fj sh -c 'command -v forgejo || command -v gitea')
+          docker exec -u git fj $F admin user create --admin --username ci --password 'Ci-Passw0rd-123' --email ci@example.com --must-change-password=false
+          api() { curl -fsS -u ci:Ci-Passw0rd-123 -H 'Content-Type: application/json' "$@" > /dev/null; }
+          U=http://localhost:3000/api/v1
+          api -X POST $U/user/repos -d '{"name":"demo","auto_init":true,"default_branch":"main"}'
+          api -X POST $U/orgs -d '{"username":"demoorg"}'
+          api -X POST $U/repos/ci/demo/issues -d '{"title":"Test issue","body":"hello"}'
+          api -X POST $U/repos/ci/demo/branches -d '{"new_branch_name":"feature"}'
+          api -X POST $U/repos/ci/demo/contents/test.txt -d '{"branch":"feature","content":"aGVsbG8=","message":"add file"}'
+          api -X POST $U/repos/ci/demo/pulls -d '{"head":"feature","base":"main","title":"Test PR"}'
+
+      - name: Check emails
+        run: |
+          U=http://localhost:3000/api/v1
+          api() { curl -fsS -u ci:Ci-Passw0rd-123 -H 'Content-Type: application/json' "$@" > /dev/null; }
+          api -X POST $U/admin/users -d '{"username":"mailtest","email":"mailtest@example.com","password":"Ci-Passw0rd-123","must_change_password":false,"send_notify":true}'
+          api -X PUT $U/repos/ci/demo/collaborators/mailtest -d '{"permission":"write"}'
+          api -X PATCH $U/repos/ci/demo/issues/1 -d '{"assignees":["mailtest"]}'
+          for i in $(seq 1 20); do
+            n=$(curl -s http://localhost:8025/api/v1/messages | jq -r '.total')
+            [ "${n:-0}" -ge 2 ] && { echo "$n emails received"; exit 0; }
+            sleep 3
+          done
+          echo "expected emails, got ${n:-0}"
+          docker logs fj --tail 40
+          exit 1
+
+      - name: common pages test
+        run: |
+          fail=0
+          check() {
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$@")
+            [ "$code" = 200 ] && echo "ok   $code ${@: -1}" || { echo "FAIL $code ${@: -1}"; fail=1; }
+          }
+          B=http://localhost:3000
+          for p in / /explore/repos /explore/users /explore/organizations /user/login /user/sign_up /user/forgot_password \
+                   /ci /demoorg /ci/demo /ci/demo/issues /ci/demo/issues/1 /ci/demo/pulls /ci/demo/pulls/1 \
+                   /ci/demo/pulls/1/files /ci/demo/pulls/1/commits /ci/demo/commits/branch/main \
+                   /ci/demo/src/branch/main /ci/demo/src/branch/feature/test.txt /ci/demo/branches \
+                   /ci/demo/releases /ci/demo/activity /ci/demo/labels /ci/demo/milestones; do
+            check "$B$p"
+          done
+          for f in dist/forgejo/public/assets/css/theme-*.css; do check "$B/assets/css/$(basename "$f")"; done
+          if [ -d custom/public/assets ]; then
+            while read -r f; do check "$B/assets/${f#./}"; done < <(cd custom/public/assets && find . -type f)
+          fi
+          exit $fail
+
+      - name: Signed-in pages
+        run: |
+          B=http://localhost:3000
+          curl -s -c /tmp/cj "$B/user/login" -o /tmp/login.html
+          csrf=$(grep -oP 'name="_csrf" value="\K[^"]+' /tmp/login.html | head -1 || true)
+          curl -s -b /tmp/cj -c /tmp/cj -o /dev/null -d "_csrf=$csrf&user_name=ci&password=Ci-Passw0rd-123" "$B/user/login"
+          fail=0
+          for p in / /user/settings /user/settings/account /user/settings/appearance /issues /pulls /notifications \
+                   /repo/create /org/create /ci/demo/issues/new /ci/demo/settings /ci/demo/compare/main...feature /admin; do
+            code=$(curl -s -b /tmp/cj -o /dev/null -w '%{http_code}' "$B$p")
+            [ "$code" = 200 ] && echo "ok   $code $p" || { echo "FAIL $code $p"; fail=1; }
+          done
+          exit $fail
+
+      - name: Forgejo log check
+        if: always()
+        run: |
+          docker logs fj 2>&1 | grep -E 'Render failed|\[F\]|panic' && exit 1
+          echo "no errors in the log"
